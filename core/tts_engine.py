@@ -92,6 +92,14 @@ def synthesize_khmer(
     output_path = str(Path(output_path).resolve())
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
+    if not script_text or not script_text.strip():
+        logger.warning("[TTS] Bỏ qua tạo TTS do đoạn text rỗng hoặc chỉ có khoảng trắng.")
+        # Create an empty silent MP3 file or just a minimal valid MP3 so FFmpeg doesn't crash
+        # For simplicity, if we have no text, we just raise an error that it's empty, or create a dummy file.
+        # But usually it's better to just skip. We will create a 0.1s silence.
+        _create_silent_mp3(output_path)
+        return output_path
+
     logger.info(f"[TTS]  TTS synthesis -> voice={voice}, rate={rate}")
     logger.info(f"    Script length: {len(script_text)} chars")
 
@@ -128,9 +136,25 @@ def get_audio_duration(mp3_path: str) -> float:
     float
         Duration in seconds.
     """
-    audio = MP3(mp3_path)
-    return audio.info.length
+    try:
+        audio = MP3(mp3_path)
+        return audio.info.length
+    except Exception as e:
+        logger.warning(f"[TTS] Không thể đọc thời lượng audio {mp3_path}: {e}")
+        return 0.0
 
+def _create_silent_mp3(output_path: str, duration: float = 0.5) -> None:
+    """Tạo một file MP3 im lặng khi text bị rỗng để tránh lỗi FFmpeg."""
+    try:
+        import subprocess
+        subprocess.run([
+            "ffmpeg", "-y", "-f", "lavfi", "-i", f"anullsrc=r=44100:cl=mono",
+            "-t", str(duration), "-q:a", "9", "-acodec", "libmp3lame", output_path
+        ], capture_output=True, check=True)
+    except Exception as e:
+        logger.error(f"[TTS] Lỗi tạo silent MP3: {e}")
+        # Create a completely empty file as absolute fallback
+        open(output_path, 'wb').close()
 
 async def list_khmer_voices() -> list[dict]:
     """
