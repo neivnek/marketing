@@ -1,0 +1,101 @@
+{
+  "pipeline_name": "Hybrid Zero-Cost Khmer Ad Video Generator",
+  "version": "2.0.0",
+  "description": "Automated pipeline with dual routing: Auto-Autonomous (Gemini AI) and Manual Override.",
+
+  "global_constraints": {
+    "language": "km",
+    "language_label": "Khmer (Cambodia)",
+    "tts_voices": {
+      "female": "km-KH-SreymomNeural",
+      "male": "km-KH-PisethNeural"
+    },
+    "tts_voice_default": "km-KH-SreymomNeural",
+    "khmer_fonts": ["Hanuman", "Battambang", "Moul", "Nokora"],
+    "font_unicode_range": "U+1780-U+17FF",
+    "output_format": "mp4",
+    "output_resolution": { "width": 1080, "height": 1920 },
+    "aspect_ratio": "9:16",
+    "framerate": 30,
+    "video_codec": "libx264",
+    "audio_codec": "aac",
+    "crf": 23,
+    "duration_range_seconds": { "min": 15, "max": 90 }
+  },
+
+  "input_schema": {
+    "Workflow_Mode": {
+      "type": "dropdown",
+      "options": [
+        { "value": "auto",   "label": "Lựa chọn 1: Auto-Autonomous" },
+        { "value": "manual", "label": "Lựa chọn 2: Manual Override" }
+      ],
+      "required": true
+    },
+    "Product_Image": {
+      "type": "file_upload",
+      "accepted_formats": ["jpg", "jpeg", "png", "webp"],
+      "max_files": 1,
+      "required": true,
+      "description": "Global — static product image used in both modes"
+    },
+    "Category_Keyword": {
+      "type": "text",
+      "required_for_mode": ["auto"],
+      "description": "Mode 1 only — keyword for Meta Ads search"
+    },
+    "Manual_Ref_Video": {
+      "type": "file_upload",
+      "accepted_formats": ["mp4", "mov", "avi", "mkv"],
+      "required_for_mode": ["manual"],
+      "description": "Mode 2 only — reference video for pacing/scene cut extraction"
+    },
+    "Manual_Script": {
+      "type": "textarea",
+      "required_for_mode": ["manual"],
+      "description": "Mode 2 only — detailed Khmer script for TTS"
+    },
+    "Manual_Prompt": {
+      "type": "text",
+      "required_for_mode": ["manual"],
+      "description": "Mode 2 only — motion style / color filter directive (e.g. 'warm cinematic slow zoom')"
+    }
+  },
+
+  "api_keys_env": {
+    "GEMINI_API_KEY": "AIza..."
+  },
+
+  "meta_ads_scraper": {
+    "base_url": "https://www.facebook.com/ads/library/",
+    "default_country": "KH",
+    "default_ad_type": "all",
+    "max_results": 1,
+    "timeout_ms": 30000
+  },
+
+  "ken_burns": {
+    "default_zoom_start": 1.0,
+    "default_zoom_end": 1.08,
+    "pan_directions": ["left", "right", "up", "down", "center"],
+    "transition_duration_frames": 15
+  },
+
+  "subtitle": {
+    "font_name": "Hanuman",
+    "font_size": 52,
+    "primary_color": "&H00FFFFFF",
+    "outline_color": "&H00000000",
+    "outline_width": 2.5,
+    "shadow": 1,
+    "margin_v": 80,
+    "alignment": 2
+  },
+
+  "directories": {
+    "output_dir": "output",
+    "temp_dir":   "temp",
+    "assets_dir": "assets",
+    "fonts_dir":  "assets/fonts"
+  }
+}

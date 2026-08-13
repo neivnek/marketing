@@ -1,0 +1,25 @@
+{
+  "profile_id": "style_20260813_094000",
+  "profile_name": "My Style",
+  "created_at": "2026-08-13T09:41:25.280156",
+  "analyzed_videos": [
+    "mau.mp4"
+  ],
+  "style_dna": {
+    "avg_segment_duration_sec": 4.0,
+    "pacing": "normal",
+    "hook_style": "question",
+    "dominant_emotion": "excited",
+    "narrative_structure": "PAS",
+    "color_preset": "vibrant",
+    "caption_style": "classic_box",
+    "music_energy": "upbeat",
+    "avg_cuts_per_10sec": 3.0,
+    "uses_broll": true,
+    "ugc_authenticity_level": "medium",
+    "cta_style": "direct",
+    "language_detected": "khmer",
+    "style_summary": "Phong cách: Video quảng cáo chuẩn với hook câu hỏi, pacing bình thường và CTA trực tiếp."
+  },
+  "gemini_style_notes": "Use a normal-paced structure with approximately 4.0s per segment. Open with a question-style hook. Maintain a excited emotional tone throughout. Follow a PAS narrative structure. End with a direct call-to-action."
+}

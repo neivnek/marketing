@@ -1,0 +1,49 @@
+# ====================================================================
+#   Hybrid Zero-Cost Video Pipeline — requirements.txt
+#   Tested on Python 3.10+
+# ====================================================================
+
+# --- Core async & HTTP ---
+aiohttp>=3.9.0
+aiofiles>=23.2.1
+requests>=2.31.0
+
+# --- Environment ---
+python-dotenv>=1.0.0
+
+# --- Google AI (Gemini Flash) — new SDK ---
+google-genai>=1.0.0
+
+# --- TTS: Microsoft Edge (Free, Khmer support) ---
+edge-tts>=6.1.9
+
+# --- Web Scraping ---
+playwright>=1.44.0
+beautifulsoup4>=4.12.0
+lxml>=5.1.0
+
+# --- Video Download ---
+yt-dlp>=2024.5.0
+
+# --- Image / Video Processing ---
+Pillow>=10.0.0
+opencv-python>=4.9.0
+numpy>=1.26.0
+ffmpeg-python>=0.2.0
+
+# --- Audio metadata ---
+mutagen>=1.47.0
+
+# --- Subtitle ---
+ass>=0.6.0
+
+# --- Progress & Utilities ---
+tqdm>=4.66.0
+fonttools>=4.51.0
+
+# --- Web UI (optional Gradio) ---
+gradio>=4.36.0
+
+# --- Visual Search (ResNet50) ---
+tensorflow>=2.16.1
+scikit-learn>=1.5.1

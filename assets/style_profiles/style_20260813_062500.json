@@ -1,0 +1,25 @@
+{
+  "profile_id": "style_20260813_062500",
+  "profile_name": "My Style",
+  "created_at": "2026-08-13T06:25:23.858098",
+  "analyzed_videos": [
+    "FDown.vn_Tai_video_Facebook_720p (HD)_6c70.mp4"
+  ],
+  "style_dna": {
+    "avg_segment_duration_sec": 4.0,
+    "pacing": "normal",
+    "hook_style": "question",
+    "dominant_emotion": "excited",
+    "narrative_structure": "PAS",
+    "color_preset": "vibrant",
+    "caption_style": "classic_box",
+    "music_energy": "upbeat",
+    "avg_cuts_per_10sec": 3.0,
+    "uses_broll": true,
+    "ugc_authenticity_level": "medium",
+    "cta_style": "direct",
+    "language_detected": "khmer",
+    "style_summary": "Phong cách: Video quảng cáo chuẩn với hook câu hỏi, pacing bình thường và CTA trực tiếp."
+  },
+  "gemini_style_notes": "Write a vibrant, high-energy product advertisement script using a classic Problem-Ag"
+}
