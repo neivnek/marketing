@@ -9,6 +9,7 @@ Priority order:
   2. Pexels Video API               — free, 200 req/hr, portrait-first
   3. Pixabay Video API              — optional, free 100 req/min,
                                      ToS: 24h JSON response cache (MANDATORY)
+  3.5 TikTok Scraper (yt-dlp)      — free, no API key, viral clips
   4. assets/local_broll/generic/   — last-resort local (no keyword match needed)
 
 Keyword fallback chain:
@@ -452,12 +453,13 @@ def fetch_broll_clips(
     Fetch B-roll clips for a given scene query with full graceful fallback chain.
 
     Fallback order (Rule 17: never raises, always has a path):
-      1. Local keyword-matched   — no quota
+      1. Local keyword-matched    — no quota
       2. Pexels API (24h cached)
       3. Pixabay API (24h cached, ToS MANDATORY)
+      3.5 TikTok scraper (yt-dlp, free, no API key needed)
       4. Local simplified keywords — strip adjectives, keep nouns
-      5. Local generic/           — no keyword filter needed
-      6. [] — caller must use Ken Burns fallback
+      5. Local generic/            — no keyword filter needed
+      6. []  — caller must use Ken Burns fallback
 
     Returns
     -------
@@ -503,6 +505,25 @@ def fetch_broll_clips(
             query_str, pixabay_api_key, product_category, conn, api_conn,
             n_clips - len(raw_clips), temp_dir,
         ))
+
+    # 3.5 TikTok scraper — cào video viral miễn phí, không cần API key
+    if len(raw_clips) < n_clips:
+        needed = n_clips - len(raw_clips)
+        try:
+            from core.tiktok_scraper import scrape_tiktok_clips
+            tiktok_dir = os.path.join(temp_dir, "tiktok_broll")
+            logger.info(f"[BRoll] Thử TikTok scraper cho '{query_str}' ({needed} clips)...")
+            tiktok_clips = scrape_tiktok_clips(
+                keyword=query_str,
+                n=needed,
+                output_dir=tiktok_dir,
+                remove_watermark=True,
+            )
+            raw_clips.extend(tiktok_clips)
+            if tiktok_clips:
+                logger.info(f"[BRoll] TikTok: {len(tiktok_clips)} clips từ '{query_str}'")
+        except Exception as e:
+            logger.warning(f"[BRoll] TikTok scraper thất bại (bỏ qua): {e}")
 
     # 4. Simplified keywords (strip adjectives, keep nouns)
     if not raw_clips:
