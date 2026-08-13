@@ -92,10 +92,56 @@ def generate_content_with_pool(
             last_exception = first_model_exception
                 
     if last_exception:
-        # Nếu tất cả Key đều bị 429
         err_str = str(last_exception)
         if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str:
-            raise RuntimeError(f"❌ TẤT CẢ API KEY ĐỀU ĐÃ HẾT LƯỢT MIỄN PHÍ TRONG NGÀY (Lỗi 429). Vui lòng thêm GEMINI_API_KEY_2, GEMINI_API_KEY_3... vào file .env!")
+            # Tự động chuyển sang Groq khi Gemini hết quota
+            logger.warning("[API Pool] Gemini hết quota → Thử chuyển sang Groq AI (miễn phí)...")
+            groq_result = _try_groq_fallback(prompt_contents)
+            if groq_result:
+                return groq_result
+            raise RuntimeError(
+                "❌ Gemini hết quota VÀ Groq cũng thất bại. "
+                "Thêm GEMINI_API_KEY_2 hoặc GROQ_API_KEY vào file .env!"
+            )
         raise last_exception
-        
+
     raise RuntimeError("❌ Không có phản hồi từ bất kỳ API Key nào!")
+
+
+def _try_groq_fallback(prompt_contents: list) -> object:
+    """
+    Thử dùng Groq AI thay thế khi Gemini hết quota.
+    Tự động chuyển đổi định dạng prompt từ Gemini sang Groq.
+    """
+    try:
+        from core.groq_client import generate_content_with_groq, is_groq_available
+        if not is_groq_available():
+            logger.info("[API Pool] Groq không khả dụng (chưa cài thư viện hoặc chưa có key).")
+            return None
+
+        # Trích xuất text từ prompt_contents của Gemini
+        if isinstance(prompt_contents, list):
+            combined = " ".join(
+                p if isinstance(p, str) else (p.get("text", "") if isinstance(p, dict) else str(p))
+                for p in prompt_contents
+            )
+        else:
+            combined = str(prompt_contents)
+
+        text = generate_content_with_groq(
+            prompt=combined,
+            system_prompt="You are a professional advertising copywriter and video script writer.",
+        )
+        if not text:
+            return None
+
+        # Trả về object giả lập response của Gemini để code cũ dùng được
+        class _FakeResponse:
+            def __init__(self, t: str):
+                self.text = t
+        logger.info("[API Pool] ✓ Groq fallback thành công!")
+        return _FakeResponse(text)
+
+    except Exception as e:
+        logger.warning(f"[API Pool] Groq fallback thất bại: {e}")
+        return None
