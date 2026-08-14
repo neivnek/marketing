@@ -32,7 +32,9 @@ numpy>=1.26.0
 mutagen>=1.47.0
 
 # --- Web UI (optional Gradio) ---
-gradio>=4.36.0
+# Code dùng API Gradio 6 (theme/css truyền vào launch(), Dataframe column_count).
+# Gradio 4.x sẽ chết ngay ở launch(css=...) nên KHÔNG hạ version.
+gradio>=6.0,<7
 
 # --- Visual Search (ResNet50) ---
 tensorflow>=2.16.1

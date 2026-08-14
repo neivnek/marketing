@@ -105,8 +105,8 @@ Muốn đổi cổng (nếu 7860 đang bận): `PORT=7871 python app2.py`
 | Tab | Công dụng |
 |---|---|
 | 🌟 **Magic One-Click** | Làm tất cả trong 1 nút: ảnh sản phẩm → video hoàn chỉnh |
-| 🌐 **URL → Multi-Variant Ads** | Dán link sản phẩm → tự bóc thông tin → sinh nhiều biến thể quảng cáo |
-| 🏪 **Quảng Cáo Tiệm (Local Store)** | Video quảng cáo cho cửa hàng địa phương |
+| 🌐 **URL → Ads** | Dán link sản phẩm → tự bóc thông tin → sinh nhiều biến thể quảng cáo |
+| 🏪 **Quảng Cáo Tiệm** | Video quảng cáo cho cửa hàng địa phương |
 | 🌟 **Ultimate Ad (Mode 10)** | Chế độ mạnh nhất: 1 ảnh → 3–5 video A/B test, kịch bản PAS đầy đủ |
 | **Pro Editor (Mode 7)** | Tùy chỉnh chi tiết Hook / PAS / B-roll / hiệu ứng rung UGC |
 | 🎬 **Google Scene Machine** | Dựng video theo storyboard 4 cảnh chuẩn Google Marketing |
@@ -114,12 +114,12 @@ Muốn đổi cổng (nếu 7860 đang bận): `PORT=7871 python app2.py`
 | 🧹 **Xóa Logo Video** | Xóa logo, ID TikTok, watermark rác khỏi clip |
 | 🔍 **Visual Search Engine** | Upload ảnh → tra ngược sản phẩm trong kho offline (ResNet50 + SQLite) |
 | 🕵️ **Ad Spy (Meta & TikTok)** | Quét kịch bản quảng cáo đối thủ đang chạy thật |
-| 🔄 **Dub Only / Remix / Full Remix** | Lồng tiếng lại, che chữ cũ, dựng lại video có sẵn |
+| 🔄 **Chế Biến Lại** (Dub Only / Remix / Full Remix) | Lồng tiếng lại, che chữ cũ, dựng lại video có sẵn |
 | 📰 **News Ads / News Pro / News Auto** | Video dạng bản tin để tránh "mù quảng cáo" |
 | ✨ **Polish** | Đánh bóng video đã có: watermark, giá, đánh giá 5 sao, ghép N Hook |
 | 🎨 **Style Profile** | Lưu & tái dùng phong cách video ưa thích |
 
-**Quy trình dùng Ultimate Ad:** mở tab *Quảng Cáo & Thương Mại → Ultimate Ad (Mode 10)* →
+**Quy trình dùng Ultimate Ad:** mở tab *Thương Mại → Ultimate Ad (Mode 10)* →
 upload ảnh sản phẩm, nhập tên + giá → bấm **Tạo Video** → nhận về 3–5 file mp4.
 
 ---

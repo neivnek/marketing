@@ -173,7 +173,14 @@ button.primary:hover {
     overflow: visible !important; 
     z-index: 999 !important;
 }
-.main-tabs button { border-radius: 8px !important; margin-bottom: 4px; padding: 8px 16px !important; }
+.main-tabs button { border-radius: 8px !important; margin-bottom: 4px; padding: 8px 10px !important; }
+/* Gradio 6 gom bớt tab vào menu "..." dựa trên chiều rộng ĐO ĐƯỢC của thanh tab,
+   mà thanh tab lại co theo nội dung của tab đang mở (1336px / 820px / 1062px...).
+   Hệ quả: mỗi tab hiện ra một số lượng tab khác nhau. Ghim chiều rộng theo viewport
+   để thanh tab luôn đủ chỗ cho cả 9 tab. Màn hình hẹp vẫn để Gradio tự gom như thiết kế. */
+@media (min-width: 1100px) {
+    .main-tabs > .tab-wrapper { min-width: calc(100vw - 6rem) !important; }
+}
 """
 
 
@@ -241,7 +248,7 @@ def build_ui() -> gr.Blocks:
         """)
 
         with gr.Tabs(elem_classes="main-tabs"):
-            with gr.Tab("🌟 Magic One-Click (Làm Tất Cả)"):
+            with gr.Tab("🌟 Magic One-Click"):
                 gr.HTML('<div class="info-box">Chế độ Siêu Tự Động mới: Bước 1: Quét ảnh & Tạo kịch bản. Bước 2: Chỉnh sửa và Render Video.</div>')
                 with gr.Row():
                     with gr.Column(scale=5):
@@ -284,7 +291,10 @@ def build_ui() -> gr.Blocks:
                         magic_df = gr.Dataframe(
                             headers=["Scene", "Type", "B-roll Keyword", "Voiceover (Lời đọc)", "Thời lượng (s)", "Chữ nổi (Overlay)"],
                             datatype=["number", "str", "str", "str", "number", "str"],
-                            col_count=(6, "fixed"),
+                            # Gradio 6: col_count đã deprecated. Nếu không khoá số cột,
+                            # bấm vào header ("Scene", "Type"...) sẽ mở chế độ đổi tên cột
+                            # và nhét nút ⋮ vào ô header làm chữ bị cắt cụt.
+                            column_count=(6, "fixed"),
                             interactive=True,
                             type="array",
                             wrap=True
@@ -429,7 +439,7 @@ def build_ui() -> gr.Blocks:
                     outputs=[magic_log, magic_speed_out_video]
                 )
 
-            with gr.Tab("🌟 Magic One-Click (Bản Classic)"):
+            with gr.Tab("🌟 Magic Classic"):
                 gr.HTML('<div class="info-box">Chế độ nguyên thuỷ: Cố định 8 cảnh, tự lấy chung 8 B-roll theo tên sản phẩm, 1 chạm là xong không rườm rà.</div>')
                 with gr.Row():
                     with gr.Column(scale=3):
@@ -466,7 +476,7 @@ def build_ui() -> gr.Blocks:
                     outputs=[classic_log, classic_out_video]
                 )
 
-            with gr.Tab("🌐 URL → Multi-Variant Ads"):
+            with gr.Tab("🌐 URL → Ads"):
                 gr.HTML('<div class="info-box">Dán URL sản phẩm (Shopee, Lazada, Amazon...) → AI tự cào thông tin → Cào video UGC → Tự tạo 3 biến thể video (Awareness 15s / Consideration 30s / Action 10s) kèm caption & hashtag sẵn sàng đăng.</div>')
                 with gr.Row():
                     with gr.Column(scale=5):
@@ -600,7 +610,7 @@ def build_ui() -> gr.Blocks:
                     outputs=[mv_product_html, mv_log, mv_vid_awareness, mv_vid_consideration, mv_vid_action, mv_text_assets]
                 )
 
-            with gr.Tab("🏪 Quảng Cáo Tiệm (Local Store)"):
+            with gr.Tab("🏪 Quảng Cáo Tiệm"):
                 gr.HTML('<div class="info-box">Chế độ chuyên biệt cho Cửa hàng vật lý (Quán ăn, Tiệm tóc, Shop, Spa...). Nhập thông tin quán và AI sẽ tự lo kịch bản thu hút khách địa phương!</div>')
                 with gr.Row():
                     with gr.Column(scale=4):
@@ -652,7 +662,7 @@ def build_ui() -> gr.Blocks:
                 )
 
 
-            with gr.Tab("🎬 Tạo Video Mới (Generative)"):
+            with gr.Tab("🎬 Tạo Video Mới"):
                 with gr.Tabs():
                     # ── TAB 3: FB Shorts — Generative AI ─────────────────
                     with gr.Tab("FB Shorts — AI Tao Video Moi"):
@@ -821,7 +831,7 @@ def build_ui() -> gr.Blocks:
                             outputs=[news_out_video, news_log],
                         )
 
-            with gr.Tab("🔄 Xử Lý & Chế Biến Lại"):
+            with gr.Tab("🔄 Chế Biến Lại"):
                 with gr.Tabs():
                     # ── TAB 1: Dub Only ──────────────────────────────────
                     with gr.Tab("Loc tieng — Dub Only"):
@@ -1157,7 +1167,7 @@ def build_ui() -> gr.Blocks:
                             outputs=[dub_remix_out_video, dub_remix_log],
                         )
 
-            with gr.Tab("🛒 Quảng Cáo & Thương Mại"):
+            with gr.Tab("🛒 Thương Mại"):
                 with gr.Tabs():
                     # ── TAB 10: Ultimate Ad (Mode 10) ────────────────
                     with gr.Tab("Ultimate Ad (Mode 10) 🌟"):
@@ -1707,8 +1717,14 @@ Hãy viết chuẩn tiếng Việt bán hàng hấp dẫn, giữ nguyên phong c
                         
                                 # Map gallery index to preset name
                                 preset_keys = ["classic_box", "outline_bold", "karaoke_highlight", "minimal_clean"]
+                                # Gradio chỉ truyền SelectData khi tham số CÓ annotation.
+                                # Lambda trần + inputs=[] -> gọi với 0 tham số -> TypeError khi bấm.
+                                def _pick_caption_preset(evt: gr.SelectData):
+                                    idx = evt.index if isinstance(evt.index, int) else 0
+                                    return preset_keys[idx] if idx < len(preset_keys) else "classic_box"
+
                                 pro_caption_gallery.select(
-                                    fn=lambda evt: preset_keys[evt.index] if evt.index < len(preset_keys) else "classic_box",
+                                    fn=_pick_caption_preset,
                                     inputs=[],
                                     outputs=[pro_caption_style]
                                 )

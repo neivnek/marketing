@@ -239,10 +239,20 @@ public share tunnel (off by default — it exposes the app, running on your keys
 link), `GRADIO_INBROWSER=0` to stop it opening a browser.
 Per-run intermediates go to `tempfile.mkdtemp(dir="temp")` via `_run_temp_dir()`; never write to a
 fixed `temp/<name>` path, or concurrent users overwrite each other.
-Top-level tabs: Magic One-Click · Magic One-Click (Classic) · URL → Multi-Variant Ads ·
-Local Store Ads · Generative (FB Shorts, News Auto) · Reprocess (Dub Only, Remix, Full Remix) ·
-Commerce (Ultimate Ad, Visual Search, Ad Spy, Scene Machine, Stockpile Curator, Logo Remover,
-Auto-Discovery, Pro Editor, News Ads, News Pro, Polish) · Guide · Style Profile.
+Nine top-level tabs: Magic One-Click · Magic Classic · URL → Ads · Quảng Cáo Tiệm ·
+Tạo Video Mới (FB Shorts, News Auto) · Chế Biến Lại (Dub Only, Remix, Full Remix) ·
+Thương Mại (Ultimate Ad, Visual Search, Ad Spy, Scene Machine, Stockpile Curator, Logo Remover,
+Auto-Discovery, Pro Editor, News Ads, News Pro, Polish) · Hướng Dẫn · Style Profile.
+
+Gradio 6 notes — the UI targets Gradio 6 and **cannot run on 4.x** (`launch(css=…, theme=…)` only
+exists from 5/6). Two constraints follow from its tab bar and table:
+- Tab labels must stay short and `.main-tabs > .tab-wrapper` keeps a viewport-based `min-width`.
+  Gradio 6 collapses overflowing tabs into a `…` menu based on the measured bar width, and that bar
+  shrinks to the active tab's content — so without the pin, each tab showed a different tab count.
+- `gr.Dataframe` must pass `column_count` (not the deprecated `col_count`); otherwise clicking a
+  header opens column-rename mode and crams a `⋮` menu into the cell, clipping the label.
+- `.select()` handlers must annotate `evt: gr.SelectData` — a bare lambda gets called with zero
+  arguments and raises.
 
 ### CLI — `main.py`
 `--mode` accepts: `auto`, `manual`, `news_auto`, `pro_editor`, `news_ads`, `news_pro`,
