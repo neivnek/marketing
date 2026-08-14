@@ -105,7 +105,7 @@ def run_dub_pipeline(inputs: DubInputs, output_dir: str, temp_dir: str) -> str:
             script_text=inputs.script,
             timestamps=[video_duration],
             output_path=ass_path,
-            font_name="Hanuman",
+            font_name="Noto Sans Khmer",
             )
         logger.info("[Step 3.5] Burning subtitles...")
         burn_hardsub(merged_path, ass_path, final_path)

@@ -148,7 +148,7 @@ def run_remix_mode(inputs: RemixInputs, output_dir: str, temp_dir: str) -> str:
         script_text=khmer_script,
         timestamps=clip_timestamps,
         output_path=ass_path,
-        font_name="Hanuman",
+        font_name="Noto Sans Khmer",
         )
     final_path = str(Path(output_dir) / "fb_remix_output.mp4")
     burn_hardsub(overlaid_path, ass_path, final_path)

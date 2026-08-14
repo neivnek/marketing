@@ -433,7 +433,7 @@ def run_ultimate_ad_pipeline(
                     output_path     = ass_path,
                     preset_name     = "classic_box",
                     word_timestamps = master_words,
-                    font_name       = "Hanuman",
+                    font_name       = "Noto Sans Khmer",
                 )
                 burn_hardsub(body_current, ass_path, "assets/fonts", subbed)
                 body_current = subbed
@@ -472,7 +472,7 @@ def run_ultimate_ad_pipeline(
         hook_variants  = script.get("hook_variants", []),
         product_image  = inputs.product_image or "",
         temp_dir       = temp_dir,
-        font_path      = "assets/fonts/Hanuman.ttf",
+        font_path      = "assets/fonts/NotoSansKhmer-Bold.ttf",
     )
 
     output_paths: list[str] = []

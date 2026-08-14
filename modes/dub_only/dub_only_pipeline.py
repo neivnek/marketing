@@ -75,7 +75,7 @@ def run_dub_only_pipeline(inputs: DubOnlyInputs, output_dir: str, temp_dir: str)
     if inputs.burn_subtitle:
         logger.info("[DUB ONLY] Burning subtitles...")
         ass_path = os.path.join(temp_dir, "dub_only_sub.ass")
-        generate_ass_file(script_text, [video_dur], ass_path, font_name="Hanuman")
+        generate_ass_file(script_text, [video_dur], ass_path, font_name="Noto Sans Khmer")
         burn_hardsub(muxed_video, ass_path, "assets/fonts", final_output)
     else:
         import shutil

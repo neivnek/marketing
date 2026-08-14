@@ -110,7 +110,7 @@ def generate_ass_file(
     output_path:     str,
     preset_name:     str = "classic_box",
     word_timestamps: Optional[list[dict]] = None,
-    font_name:       str = "Hanuman",
+    font_name:       str = "Noto Sans Khmer",
     alignment:       int = 2,
     margin_v:        int = 140,
     res_x:           int = 1080,
@@ -234,7 +234,7 @@ def generate_ass_file(
 
 
 def ensure_caption_style_previews(
-    font_name: str = "Hanuman",
+    font_name: str = "Noto Sans Khmer",
     output_dir: str = "assets/caption_style_previews",
     force_rebuild: bool = False
 ) -> list[str]:
@@ -317,7 +317,7 @@ def generate_subtitles(
     audio_path: str,
     output_video: str,
     style: str = "classic_box",
-    font_name: str = "Hanuman",
+    font_name: str = "Noto Sans Khmer",
 ) -> Optional[str]:
     """
     Alias đơn giản hóa cho video_assembly_engine và scene_machine_engine.
@@ -336,7 +336,7 @@ def generate_subtitles(
     style : str
         Tên preset subtitle (classic_box, outline_bold, karaoke_highlight, minimal_clean).
     font_name : str
-        Tên font chữ (mặc định Hanuman cho Khmer).
+        Tên font chữ (mặc định "Noto Sans Khmer", khớp assets/fonts/).
 
     Returns
     -------

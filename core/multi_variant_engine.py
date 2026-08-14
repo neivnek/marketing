@@ -170,7 +170,7 @@ def _render_variant_video(
         safe_overlay = overlay.replace("'", "\\'").replace(":", "\\:")
         vf_filter += (
             f",drawtext=text='{safe_overlay}'"
-            ":fontfile=assets/fonts/Hanuman.ttf"
+            ":fontfile=assets/fonts/NotoSansKhmer-Bold.ttf"
             ":fontcolor=white:fontsize=56"
             ":x=(w-text_w)/2:y=h-220"
             ":box=1:boxcolor=black@0.65:boxborderw=14"

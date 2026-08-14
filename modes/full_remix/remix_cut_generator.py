@@ -290,7 +290,7 @@ def _mux_broll_with_audio(
 def _add_ai_dub_badge(input_video: str, output_video: str) -> None:
     """Add small transparent 'Lồng tiếng AI' label for transparency."""
     label_filter = (
-        "drawtext=fontfile='assets/fonts/Hanuman.ttf':"
+        "drawtext=fontfile='assets/fonts/NotoSansKhmer-Bold.ttf':"
         "text='Lồng tiếng AI':"
         "fontsize=24:fontcolor=white@0.75:"
         "box=1:boxcolor=black@0.45:boxborderw=6:"

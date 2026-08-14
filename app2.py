@@ -2447,9 +2447,18 @@ Hãy viết chuẩn tiếng Việt bán hàng hấp dẫn, giữ nguyên phong c
 # ──────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
+    # Cổng mặc định 7860 — khớp với Dockerfile (EXPOSE 7860) và app_port của
+    # Hugging Face Spaces. Đổi cổng khi chạy local: PORT=7871 python app2.py
+    SERVER_PORT = int(os.getenv("PORT") or os.getenv("GRADIO_SERVER_PORT") or 7860)
+    # Tắt link chia sẻ công khai / tự mở trình duyệt khi chạy trong container:
+    #   GRADIO_SHARE=0 GRADIO_INBROWSER=0
+    _off = ("0", "false", "no")
+    SHARE     = os.getenv("GRADIO_SHARE", "1").strip().lower() not in _off
+    INBROWSER = os.getenv("GRADIO_INBROWSER", "1").strip().lower() not in _off
+
     print("\n" + "=" * 60)
-    print("  FB Shorts Ads Generator v3.0")
-    print("  URL: http://localhost:7861")
+    print("  FB Shorts Ads Generator v3.5")
+    print(f"  URL: http://localhost:{SERVER_PORT}")
     print("=" * 60 + "\n")
 
     from core.subtitle_gen import ensure_caption_style_previews
@@ -2462,9 +2471,9 @@ if __name__ == "__main__":
     ui = build_ui()
     ui.launch(
         server_name="0.0.0.0",
-        server_port=7861,
-        share=True,
-        inbrowser=True,
+        server_port=SERVER_PORT,
+        share=SHARE,
+        inbrowser=INBROWSER,
         css=CSS,
         theme=gr.themes.Soft(primary_hue="indigo"),
     )

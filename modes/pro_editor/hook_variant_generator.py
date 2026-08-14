@@ -180,7 +180,7 @@ def _burn_text_overlay(
     input_video: str,
     output_video: str,
     text:        str,
-    font_path:   str  = "assets/fonts/Hanuman.ttf",
+    font_path:   str  = "assets/fonts/NotoSansKhmer-Bold.ttf",
     font_size:   int  = 72,
 ) -> str:
     """Burn hook verbal text onto the video using FFmpeg drawtext."""
@@ -238,7 +238,7 @@ def generate_hook_clips(
     hook_variants:    list[dict],
     product_image:    str,
     temp_dir:         str,
-    font_path:        str = "assets/fonts/Hanuman.ttf",
+    font_path:        str = "assets/fonts/NotoSansKhmer-Bold.ttf",
     out_w:            int = 1080,
     out_h:            int = 1920,
     product_name:     str = "",

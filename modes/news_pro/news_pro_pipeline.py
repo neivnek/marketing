@@ -403,7 +403,7 @@ def render_from_script(inputs: NewsProInputs, output_dir: str, temp_dir: str) ->
                     output_path=ass_path,
                     preset_name="classic_box",
                     word_timestamps=master_words,
-                    font_name="Hanuman",
+                    font_name="Noto Sans Khmer",
                 )
                 burn_hardsub(body_current, ass_path, "assets/fonts", subbed)
                 body_current = subbed
