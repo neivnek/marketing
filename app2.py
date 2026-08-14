@@ -1351,7 +1351,8 @@ def build_ui() -> gr.Blocks:
                                     api_key = os.getenv("GEMINI_API_KEY", "")
                                     if api_key:
                                         from google import genai
-                                        client_ai = genai.Client(api_key=api_key)
+                                        from core.gemini_pool import get_pooled_client
+                                        client_ai = get_pooled_client(api_key=api_key)
                                         prompt = f"""Bạn là một chuyên gia Spy Ads và Copywriting hàng đầu trên {platform}.
 Hãy phân tích và viết ra {limit} kịch bản quảng cáo video ngắn (TikTok/Reels/Shorts) triệu view đang có tỷ lệ chuyển đổi cao nhất cho sản phẩm/từ khóa: "{keyword}".
 

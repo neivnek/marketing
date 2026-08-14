@@ -30,6 +30,7 @@ from pathlib import Path
 from typing import Optional
 
 from core.ffmpeg_utils import apply_ken_burns
+from core.gemini_pool import get_pooled_client
 
 logger = logging.getLogger(__name__)
 
@@ -127,7 +128,7 @@ def generate_hook_variants_from_gemini(
         from google import genai
         from google.genai import types
 
-        client = genai.Client(api_key=api_key)
+        client = get_pooled_client(api_key=api_key)
         fallback_models = [
             os.getenv("GEMINI_MODEL", "").strip(),
             "gemini-3.6-flash",

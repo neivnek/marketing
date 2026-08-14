@@ -20,6 +20,7 @@ import logging
 import shutil
 import subprocess
 from typing import Dict, List, Optional
+from core.gemini_pool import get_pooled_client
 
 logger = logging.getLogger(__name__)
 
@@ -75,7 +76,7 @@ def _generate_variant_scripts(product_info: dict) -> Optional[dict]:
         from google import genai
         from google.genai import types
 
-        client = genai.Client(api_key=api_key)
+        client = get_pooled_client(api_key=api_key)
 
         prompt = _VARIANT_PROMPT.format(
             product_name=product_info.get("product_name", "sản phẩm"),

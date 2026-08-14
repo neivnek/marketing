@@ -35,6 +35,7 @@ import re
 import subprocess
 from pathlib import Path
 from typing import Optional
+from core.gemini_pool import get_pooled_client
 
 logger = logging.getLogger(__name__)
 
@@ -226,7 +227,7 @@ Return ONLY a JSON array:
 ]
 Only include beats that are clearly present. Skip if absent."""
 
-        client = genai.Client(api_key=api_key)
+        client = get_pooled_client(api_key=api_key)
         fallback_models = [
             os.getenv("GEMINI_MODEL", "").strip(),
             "gemini-3.6-flash",

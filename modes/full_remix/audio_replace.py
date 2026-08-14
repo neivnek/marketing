@@ -20,6 +20,7 @@ from pathlib import Path
 from core.tts_engine import synthesize_khmer
 from core.ffmpeg_utils import get_video_duration
 from core.language_resolver import resolve_voice, resolve_gemini_translate_prompt
+from core.gemini_pool import get_pooled_client
 
 logger = logging.getLogger(__name__)
 
@@ -131,7 +132,7 @@ def _translate_audio(
         from google.genai import types as gtypes
         from modes.auto.ai_analyzer import _make_part, _generate_content_with_fallback
 
-        client = genai.Client(api_key=api_key)
+        client = get_pooled_client(api_key=api_key)
 
         # Build language-specific translation instruction
         lang_instruction = resolve_gemini_translate_prompt(target_language)

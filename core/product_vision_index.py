@@ -12,6 +12,7 @@ except ImportError:
     genai = None
 
 from .visual_search_engine import VisualSearchEngine
+from core.gemini_pool import get_pooled_client
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +28,7 @@ def extract_product_metadata_via_gemini(poster_image_path: str, api_key: str) ->
         return None
 
     try:
-        client = genai.Client(api_key=api_key)
+        client = get_pooled_client(api_key=api_key)
         
         prompt = """
         Ảnh này là 1 poster quảng cáo sản phẩm. Hãy phân tích và trả về CHUẨN JSON với cấu trúc sau:

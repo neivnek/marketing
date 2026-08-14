@@ -16,6 +16,7 @@ import logging
 import subprocess
 from pathlib import Path
 from typing import List, Dict, Optional
+from core.gemini_pool import get_pooled_client
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +30,7 @@ def generate_broll_search_queries(keyword: str, num_queries: int = 3) -> List[st
 
     try:
         from google import genai
-        client = genai.Client(api_key=api_key)
+        client = get_pooled_client(api_key=api_key)
         prompt = f"""Bạn là AI Curator B-Roll của Stockpile Engine.
 Với từ khóa/sản phẩm: "{keyword}".
 Hãy tạo ra {num_queries} cụm từ khóa tiếng Anh/tiếng Việt tối ưu nhất để tìm kiếm video B-roll minh họa (Shorts/Reels/Stock video).

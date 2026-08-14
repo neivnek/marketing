@@ -30,6 +30,7 @@ import os
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
+from core.gemini_pool import get_pooled_client
 
 logger = logging.getLogger(__name__)
 
@@ -178,7 +179,7 @@ def analyze_style_from_videos(
     if not profile_name:
         profile_name = f"Style Profile {profile_id}"
 
-    client = genai.Client(api_key=api_key)
+    client = get_pooled_client(api_key=api_key)
 
     # Build contents: [video_part_1, video_part_2, ..., prompt]
     logger.info(

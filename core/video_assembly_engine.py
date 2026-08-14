@@ -11,6 +11,7 @@ import os
 import logging
 import subprocess
 from typing import Optional
+from core.gemini_pool import get_pooled_client
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +57,7 @@ def assemble_existing_video(
     if api_key:
         from google import genai
         try:
-            client = genai.Client(api_key=api_key)
+            client = get_pooled_client(api_key=api_key)
             prompt = f"Viết 1 đoạn kịch bản lồng tiếng siêu ngắn (dưới 30 từ, đọc khoảng {int(duration)} giây) cho quảng cáo TikTok về sản phẩm: {product_name}. Lợi ích: {', '.join(benefits[:2])}. Chỉ trả về nội dung lời thoại."
             resp = client.models.generate_content(model="gemini-3.6-flash", contents=prompt)
             if resp and resp.text:

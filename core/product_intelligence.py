@@ -39,6 +39,7 @@ from dataclasses import asdict, dataclass, field
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional
+from core.gemini_pool import get_pooled_client
 
 logger = logging.getLogger(__name__)
 
@@ -211,7 +212,7 @@ def identify_product_from_image(
     from google import genai
     from google.genai import types
 
-    client = genai.Client(api_key=api_key)
+    client = get_pooled_client(api_key=api_key)
 
     prompt = (
         "You are an expert E-Commerce Marketing Analyst and Smart OCR AI. "
@@ -322,7 +323,7 @@ def research_product_web(
     from google import genai
     from google.genai import types
 
-    client  = genai.Client(api_key=api_key)
+    client  = get_pooled_client(api_key=api_key)
     name    = identity.name_guess
     category = identity.category or "consumer product"
 

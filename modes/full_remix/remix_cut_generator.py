@@ -22,6 +22,7 @@ from pathlib import Path
 from core.concat_helper import concatenate_clips
 from core.ugc_filters import apply_ugc_filter
 from core.ffmpeg_utils import get_video_duration
+from core.gemini_pool import get_pooled_client
 
 logger = logging.getLogger(__name__)
 
@@ -200,7 +201,7 @@ def _auto_resolve_broll_query(video_path: str) -> str:
         from google.genai import types as gtypes
         from modes.auto.ai_analyzer import _make_part, _generate_content_with_fallback
 
-        client = genai.Client(api_key=api_key)
+        client = get_pooled_client(api_key=api_key)
         video_part = _make_part(video_path)
 
         prompt = (

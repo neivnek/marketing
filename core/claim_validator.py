@@ -22,6 +22,7 @@ import logging
 import os
 import re
 from typing import Any, Optional
+from core.gemini_pool import get_pooled_client
 
 logger = logging.getLogger(__name__)
 
@@ -183,7 +184,7 @@ def rewrite_violations(
     seg_ids_to_fix: set = {v["segment_id"] for v in block_violations}
     logger.info(f"[ClaimValidator] Rewriting {len(seg_ids_to_fix)} segments via Gemini...")
 
-    client    = genai.Client(api_key=api_key)
+    client    = get_pooled_client(api_key=api_key)
     new_script = copy.deepcopy(script)
 
     all_segs  = new_script.get("script_segments", []) + new_script.get("hook_variants", [])

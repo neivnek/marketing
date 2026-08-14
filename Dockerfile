@@ -17,6 +17,12 @@ RUN fc-cache -f -v
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Playwright browser + OS libs — bắt buộc cho mode `auto` (Meta Ads scraper)
+# và AI B-roll (Google Labs client). Thiếu bước này 2 mode đó sẽ lỗi
+# "Executable doesn't exist at /root/.cache/ms-playwright/...".
+RUN playwright install --with-deps chromium \
+    && rm -rf /var/lib/apt/lists/*
+
 # Copy application code
 COPY . .
 

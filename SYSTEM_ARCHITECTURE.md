@@ -170,14 +170,28 @@ Validated and sanitized by `modes/news_auto/json_schema_validator.py` before use
 - `run_pipeline(inputs: PipelineInputs, cfg: Optional[PipelineConfig] = None) -> str` — central dispatch.
 - `validate_inputs(...)` — per-mode required-field validation.
 
-### `core/gemini_pool.py`
-- `generate_content_with_pool(...)` — rotates multiple `GEMINI_API_KEY*` values and walks the
-  model fallback chain `gemini-3.6-flash` → `gemini-3.5-flash` → `gemini-flash-latest`
-  (override with `GEMINI_MODEL`). On quota exhaustion, callers fall back to `core/groq_client.py`.
+### `core/gemini_pool.py` — the only sanctioned way to reach Gemini
+- `get_pooled_client(api_key=None) -> PooledClient` — drop-in replacement for `genai.Client`.
+  Same call shape (`client.models.generate_content(model=…, contents=…, config=…)`), but every
+  call gains key rotation, model fallback and the Groq escape hatch. **Use this, never
+  `genai.Client` directly** — all 18 previous direct-client sites were migrated to it.
+- `generate_content_with_pool(contents, config=None, fallback_models=None, preferred_key=None)`
+  — rotates `GEMINI_API_KEY`, `GEMINI_API_KEY_1..19` (plus `preferred_key` first when the caller
+  passes one) and walks `gemini-3.6-flash` → `gemini-3.5-flash` → `gemini-flash-latest`.
+- Quota handling: a 429 on any key marks that key exhausted and moves on; once every key is
+  exhausted the cache self-clears so a later run can retry. Quota is detected by message content
+  (`_is_quota_error`), not exception class, because the SDK wraps 429 in several types.
+- Groq fallback fires whenever *any* key hit quota — not only when the last error was a 429.
+  It refuses to run on multimodal prompts (image/video parts) instead of stringifying them, and
+  it forwards `response_mime_type="application/json"`, `system_instruction`, `temperature` and
+  `max_output_tokens` from the Gemini config.
 
 ### `core/groq_client.py`
 - Free-tier fallback over `llama-3.3-70b-versatile` → `llama-3.1-8b-instant` → `mixtral-8x7b-32768`,
   rotating `GROQ_API_KEY`, `GROQ_API_KEY_2`, …
+- `json_mode=True` sets Groq's `response_format={"type": "json_object"}` and injects the word
+  "JSON" into the system prompt (Groq requires it), so `json.loads(response.text)` still works
+  on the fallback path.
 
 ### `core/tts_engine.py`
 - `synthesize_khmer(script_text, output_path, voice="km-KH-SreymomNeural") -> str`
@@ -258,7 +272,10 @@ Pro Editor extras: `--skip-product-research`, `--force-refresh-research`,
 
 ### Docker / Hugging Face Spaces
 `Dockerfile` installs FFmpeg + fontconfig, copies `assets/fonts/` into `/usr/share/fonts/khmer/`,
-runs `fc-cache`, exposes **7860** and runs `python app2.py`.
+runs `fc-cache`, installs the Playwright Chromium browser, exposes **7860** and runs `python app2.py`.
+The `playwright install --with-deps chromium` step is required by the `auto` mode scraper and the
+AI B-roll client — without it those two modes fail at runtime with "Executable doesn't exist".
+It costs ~1.5 GB of image size (≈4.3 GB → ≈5.8 GB).
 
 ---
 
@@ -288,9 +305,11 @@ the product image and local B-roll.
 
 1. **Zero-cost compliance** — never introduce a paid-only SDK or a required paid token.
    Default to FFmpeg, Edge TTS, and free-tier AI Studio / Groq.
-2. **Gemini access goes through `core/gemini_pool.py`**, never a bare client. Keep the model
-   fallback chain intact and set `response_mime_type="application/json"` for structured output.
-   Do not reintroduce retired models (e.g. `gemini-2.5-flash`).
+2. **Gemini access goes through `core/gemini_pool.py`** — call `get_pooled_client(api_key)`,
+   never `genai.Client(...)`. A bare client silently opts that call site out of key rotation and
+   the Groq fallback, so it dies on quota exhaustion while the rest of the app survives. Keep the
+   model fallback chain intact, set `response_mime_type="application/json"` for structured output,
+   and do not reintroduce retired models (e.g. `gemini-2.5-flash`).
 3. **Font handling** — always pass `fonts_dir="assets/fonts"` to `burn_hardsub(...)`, and keep
    font references on the two shipped families (see §8).
 4. **FFmpeg path sanitizing on Windows** — normalize with `.replace("\\", "/")` and escape colons

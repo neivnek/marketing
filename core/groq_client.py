@@ -51,6 +51,7 @@ def generate_content_with_groq(
     system_prompt: str = "You are a professional advertising copywriter.",
     max_tokens: int = 2048,
     temperature: float = 0.8,
+    json_mode: bool = False,
 ) -> Optional[str]:
     """
     Gọi Groq API để tạo nội dung. Tự động fallback qua nhiều key và model.
@@ -61,6 +62,8 @@ def generate_content_with_groq(
     system_prompt : Vai trò của AI
     max_tokens    : Giới hạn output
     temperature   : Độ sáng tạo (0.0-1.0)
+    json_mode     : Bật JSON mode của Groq — dùng khi caller cần json.loads()
+                    được kết quả (tương đương response_mime_type của Gemini)
 
     Returns
     -------
@@ -84,6 +87,12 @@ def generate_content_with_groq(
         _EXHAUSTED_KEYS.clear()
         active_keys = keys
 
+    # JSON mode của Groq yêu cầu chữ "JSON" xuất hiện trong messages
+    if json_mode and "json" not in system_prompt.lower():
+        system_prompt = f"{system_prompt} Respond with a single valid JSON object only."
+
+    extra_kwargs = {"response_format": {"type": "json_object"}} if json_mode else {}
+
     for key in active_keys:
         key_masked = f"{key[:8]}...{key[-4:]}" if len(key) > 12 else "***"
         client = Groq(api_key=key)
@@ -99,6 +108,7 @@ def generate_content_with_groq(
                     ],
                     max_tokens=max_tokens,
                     temperature=temperature,
+                    **extra_kwargs,
                 )
                 text = completion.choices[0].message.content
                 if text and text.strip():

@@ -16,6 +16,7 @@ import requests
 import tempfile
 from typing import Optional
 from urllib.parse import urlparse
+from core.gemini_pool import get_pooled_client
 
 logger = logging.getLogger(__name__)
 
@@ -143,7 +144,7 @@ def _parse_with_gemini(page_text: str, url: str) -> dict:
         from google import genai
         from google.genai import types
 
-        client = genai.Client(api_key=api_key)
+        client = get_pooled_client(api_key=api_key)
         prompt = f"""Bạn là trợ lý phân tích trang web thương mại điện tử.
 Dưới đây là nội dung văn bản cào được từ trang: {url}
 
