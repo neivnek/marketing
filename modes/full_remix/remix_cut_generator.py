@@ -22,6 +22,7 @@ from pathlib import Path
 from core.concat_helper import concatenate_clips
 from core.ugc_filters import apply_ugc_filter
 from core.ffmpeg_utils import get_video_duration
+from core.gemini_pool import get_pooled_client
 
 logger = logging.getLogger(__name__)
 
@@ -200,7 +201,7 @@ def _auto_resolve_broll_query(video_path: str) -> str:
         from google.genai import types as gtypes
         from modes.auto.ai_analyzer import _make_part, _generate_content_with_fallback
 
-        client = genai.Client(api_key=api_key)
+        client = get_pooled_client(api_key=api_key)
         video_part = _make_part(video_path)
 
         prompt = (
@@ -290,7 +291,7 @@ def _mux_broll_with_audio(
 def _add_ai_dub_badge(input_video: str, output_video: str) -> None:
     """Add small transparent 'Lồng tiếng AI' label for transparency."""
     label_filter = (
-        "drawtext=fontfile='assets/fonts/Hanuman.ttf':"
+        "drawtext=fontfile='assets/fonts/NotoSansKhmer-Bold.ttf':"
         "text='Lồng tiếng AI':"
         "fontsize=24:fontcolor=white@0.75:"
         "box=1:boxcolor=black@0.45:boxborderw=6:"

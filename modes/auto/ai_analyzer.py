@@ -14,7 +14,9 @@ import re
 from pathlib import Path
 
 from google import genai
+
 from google.genai import types
+from core.gemini_pool import get_pooled_client
 
 logger = logging.getLogger(__name__)
 
@@ -67,7 +69,7 @@ DEFAULT_MODELS = [
 
 def _get_client(api_key: str) -> genai.Client:
     """Initialize the Gemini client with the new google-genai SDK."""
-    return genai.Client(api_key=api_key)
+    return get_pooled_client(api_key=api_key)
 
 
 def _make_part(file_path: str) -> types.Part:

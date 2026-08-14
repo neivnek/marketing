@@ -123,7 +123,7 @@ def render_local_video(
         if overlay:
             safe_ov = overlay.replace("'", "\\'").replace(":", "\\:")
             # Giữ overlay ở giữa màn hình
-            vf += f",drawtext=text='{safe_ov}':fontfile=assets/fonts/Hanuman.ttf:fontcolor=white:fontsize=64:x=(w-text_w)/2:y=h/2-100:box=1:boxcolor=black@0.7:boxborderw=20"
+            vf += f",drawtext=text='{safe_ov}':fontfile=assets/fonts/NotoSansKhmer-Bold.ttf:fontcolor=white:fontsize=64:x=(w-text_w)/2:y=h/2-100:box=1:boxcolor=black@0.7:boxborderw=20"
 
         if scene_img and os.path.isfile(scene_img):
             frames = int(tts_dur * 30)

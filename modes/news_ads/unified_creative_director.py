@@ -17,6 +17,7 @@ import json
 import logging
 import re
 from typing import Any, Optional
+from core.gemini_pool import get_pooled_client
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +40,7 @@ def generate_unified_creative_script(
     from google.genai import types
     import os
 
-    client = genai.Client(api_key=api_key)
+    client = get_pooled_client(api_key=api_key)
     
     # ── 1. Gather Context ──────────────────────────────────────────────
     context_block = ""

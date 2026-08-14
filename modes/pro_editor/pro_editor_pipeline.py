@@ -232,7 +232,7 @@ def run_pro_editor_pipeline(inputs: Any, output_dir: str, temp_dir: str) -> list
         hook_variants=script.get("hook_variants", []),
         product_image=inputs.product_image,
         temp_dir=temp_dir,
-        font_path="assets/fonts/Hanuman.ttf",
+        font_path="assets/fonts/NotoSansKhmer-Bold.ttf",
     )
     logger.info(f"    ✓ {len(hook_clips)} hook clips ready")
 
@@ -409,7 +409,7 @@ def run_pro_editor_pipeline(inputs: Any, output_dir: str, temp_dir: str) -> list
                 output_path=ass_path,
                 preset_name=inputs.caption_style,
                 word_timestamps=master_word_timestamps,
-                font_name="Hanuman",
+                font_name="Noto Sans Khmer",
             )
             burn_hardsub(body_music, ass_path, "assets/fonts", subbed)
             body_final = subbed

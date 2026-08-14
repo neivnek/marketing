@@ -16,7 +16,9 @@ import re
 from typing import Optional
 
 from google import genai
+
 from google.genai import types
+from core.gemini_pool import get_pooled_client
 
 logger = logging.getLogger(__name__)
 
@@ -188,7 +190,7 @@ def generate_creative_script(
     -------
     dict — Parsed CreativeScript JSON conforming to the schema above.
     """
-    client = genai.Client(api_key=api_key)
+    client = get_pooled_client(api_key=api_key)
 
     num_hooks = max(2, min(5, num_hooks))
 

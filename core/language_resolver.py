@@ -58,18 +58,18 @@ LANGUAGE_DISPLAY_NAMES: dict[str, str] = {
 
 # Font recommendations per language (for subtitle rendering)
 LANGUAGE_FONT_MAP: dict[str, str] = {
-    "khmer":        "Hanuman",
-    "vietnamese":   "Roboto",
-    "english":      "Roboto",
-    "thai":         "Roboto",      # TH Sarabun New is ideal but falls back to Roboto
-    "indonesian":   "Roboto",
-    "chinese":      "Roboto",
-    "malay":        "Roboto",
-    "tagalog":      "Roboto",
-    "hindi":        "Roboto",
-    "korean":       "Roboto",
-    "japanese":     "Roboto",
-    "burmese":      "Roboto",
+    "khmer":        "Noto Sans Khmer",
+    "vietnamese":   "Noto Sans",
+    "english":      "Noto Sans",
+    "thai":         "Noto Sans",      # TH Sarabun New is ideal but falls back to Noto Sans
+    "indonesian":   "Noto Sans",
+    "chinese":      "Noto Sans",
+    "malay":        "Noto Sans",
+    "tagalog":      "Noto Sans",
+    "hindi":        "Noto Sans",
+    "korean":       "Noto Sans",
+    "japanese":     "Noto Sans",
+    "burmese":      "Noto Sans",
 }
 
 # Gemini translation instruction per language
@@ -143,7 +143,7 @@ def resolve_gemini_translate_prompt(target_language: str) -> str:
 def resolve_font(target_language: str) -> str:
     """Return recommended font name for subtitle rendering."""
     key = target_language.lower().strip()
-    return LANGUAGE_FONT_MAP.get(key, "Roboto")
+    return LANGUAGE_FONT_MAP.get(key, "Noto Sans")
 
 
 def get_supported_languages() -> list[str]:

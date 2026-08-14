@@ -35,7 +35,7 @@ def inject_channel_watermark(
     text_clean = channel_name.replace(":", "\\:").replace("'", "").strip()
 
     # Font path lookup
-    font_path = "assets/fonts/Hanuman.ttf"
+    font_path = "assets/fonts/NotoSansKhmer-Bold.ttf"
     if not os.path.exists(font_path):
         font_arg = "font=sans"
     else:

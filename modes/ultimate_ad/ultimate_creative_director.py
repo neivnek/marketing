@@ -21,6 +21,7 @@ import logging
 import os
 import re
 from typing import Any, Optional
+from core.gemini_pool import get_pooled_client
 
 logger = logging.getLogger(__name__)
 
@@ -195,7 +196,7 @@ Return ONLY a valid JSON object:
     # ── Call Gemini ────────────────────────────────────────────────
     logger.info(f"[UltimateCreativeDirector] Generating script: template={ad_template}, lang={target_language}")
 
-    client = genai.Client(api_key=api_key)
+    client = get_pooled_client(api_key=api_key)
     fallback_models = [
         os.getenv("GEMINI_MODEL", "").strip(),
         "gemini-3.6-flash",

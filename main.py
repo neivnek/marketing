@@ -50,9 +50,18 @@ def build_parser() -> argparse.ArgumentParser:
     # ── Global arguments ──────────────────────────────────────────
     parser.add_argument(
         "--mode",
-        choices=["auto", "manual", "news_auto", "pro_editor", "news_ads", "news_pro", "dub_only", "full_remix", "polish"],
+        choices=["auto", "manual", "news_auto", "pro_editor", "news_ads", "news_pro",
+                 "dub_only", "full_remix", "polish", "ultimate_ad"],
         required=True,
-        help="Workflow mode: 'auto', 'manual', 'news_auto', 'pro_editor', 'news_ads', 'news_pro', 'dub_only', 'full_remix', 'polish'.",
+        help="Workflow mode: 'auto', 'manual', 'news_auto', 'pro_editor', 'news_ads', "
+             "'news_pro', 'dub_only', 'full_remix', 'polish', 'ultimate_ad'.",
+    )
+    parser.add_argument(
+        "--target-language",
+        default="khmer",
+        choices=["khmer", "vietnamese", "english"],
+        metavar="LANG",
+        help="Ngôn ngữ đầu ra cho mode 'ultimate_ad' (mặc định: khmer).",
     )
     parser.add_argument(
         "--product-image",
@@ -458,6 +467,27 @@ def main():
                 num_hook_variants=args.hook_variants,
                 output_quality=args.quality if hasattr(args, 'quality') else "1080p",
                 tts_voice=args.tts_voice,
+            ),
+            output_dir=args.output,
+        )
+
+    elif args.mode == "ultimate_ad":
+        from core.config import UltimateAdInputs
+        if not args.product_name.strip() and not args.product_image:
+            parser.error("--product-name or --product-image is required for mode 'ultimate_ad'.")
+
+        inputs = PipelineInputs(
+            mode=WorkflowMode.ULTIMATE_AD,
+            product_image=args.product_image,
+            ultimate_ad=UltimateAdInputs(
+                product_name=args.product_name or os.path.splitext(os.path.basename(args.product_image))[0],
+                target_language=args.target_language,
+                product_image=args.product_image,
+                script_text=args.script,
+                key_benefits=[b.strip() for b in args.benefits.split(",") if b.strip()],
+                pain_points=[p.strip() for p in args.pain_points.split(",") if p.strip()],
+                price=args.price,
+                tts_voice_edge=args.tts_voice,
             ),
             output_dir=args.output,
         )

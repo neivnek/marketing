@@ -468,115 +468,117 @@ def fetch_broll_clips(
     """
     conn     = _get_manifest_db(temp_dir)
     api_conn = _get_api_cache_db(temp_dir)
-    query_str = " ".join(query_keywords)
-    raw_clips: list[str] = []
+    try:
+        query_str = " ".join(query_keywords)
+        raw_clips: list[str] = []
 
-    # 1. Local keyword-matched
-    raw_clips.extend(
-        _search_local_broll(query_keywords, local_broll_dir, product_category, conn, n_clips)
-    )
-
-    # 1.5 AI B-roll (Mode 11) - Nếu có reference image
-    if len(raw_clips) < n_clips and reference_image and os.path.exists(reference_image):
-        from modes.ai_broll.generation_queue import generate_batch_async
-        needed = n_clips - len(raw_clips)
-        # Bọc try-catch để fallback an toàn
-        try:
-            tasks_data = [{"prompt": f"@product {query_str}", "reference_image": reference_image} for _ in range(needed)]
-            logger.info(f"[BRoll] Kích hoạt AI_BROLL (Mode 11) tạo {needed} clips cho '{query_str}'")
-            ai_clips = generate_batch_async(tasks_data)
-            valid_ai_clips = [c for c in ai_clips if c is not None]
-            raw_clips.extend(valid_ai_clips)
-            if len(valid_ai_clips) < needed:
-                logger.warning("[BRoll] AI_BROLL không đủ kết quả, fallback sang Pexels...")
-        except Exception as e:
-            logger.error(f"[BRoll] AI_BROLL thất bại: {e}")
-
-    # 2. Pexels
-    if len(raw_clips) < n_clips:
-        raw_clips.extend(_search_pexels(
-            query_str, pexels_api_key, product_category, conn, api_conn,
-            n_clips - len(raw_clips), temp_dir,
-        ))
-
-    # 3. Pixabay (24h cache mandatory)
-    if len(raw_clips) < n_clips:
-        raw_clips.extend(_search_pixabay(
-            query_str, pixabay_api_key, product_category, conn, api_conn,
-            n_clips - len(raw_clips), temp_dir,
-        ))
-
-    # 3.5 TikTok scraper — cào video viral miễn phí, không cần API key
-    if len(raw_clips) < n_clips:
-        needed = n_clips - len(raw_clips)
-        try:
-            from core.tiktok_scraper import scrape_tiktok_clips
-            tiktok_dir = os.path.join(temp_dir, "tiktok_broll")
-            logger.info(f"[BRoll] Thử TikTok scraper cho '{query_str}' ({needed} clips)...")
-            tiktok_clips = scrape_tiktok_clips(
-                keyword=query_str,
-                n=needed,
-                output_dir=tiktok_dir,
-                remove_watermark=True,
-            )
-            raw_clips.extend(tiktok_clips)
-            if tiktok_clips:
-                logger.info(f"[BRoll] TikTok: {len(tiktok_clips)} clips từ '{query_str}'")
-        except Exception as e:
-            logger.warning(f"[BRoll] TikTok scraper thất bại (bỏ qua): {e}")
-
-    # 4. Simplified keywords (strip adjectives, keep nouns)
-    if not raw_clips:
-        simplified = _simplify_keywords(query_keywords)
-        if simplified != query_keywords:
-            logger.info(f"[BRoll] Simplified keyword fallback: {simplified}")
-            raw_clips.extend(
-                _search_local_broll(simplified, local_broll_dir, product_category, conn, n_clips)
-            )
-            if not raw_clips and pexels_api_key:
-                raw_clips.extend(_search_pexels(
-                    " ".join(simplified), pexels_api_key, product_category, conn, api_conn,
-                    n_clips, temp_dir,
-                ))
-            if not raw_clips and pixabay_api_key:
-                raw_clips.extend(_search_pixabay(
-                    " ".join(simplified), pixabay_api_key, product_category, conn, api_conn,
-                    n_clips, temp_dir,
-                ))
-
-    # 5. Generic/ folder (last-resort local — no keyword filter)
-    if not raw_clips:
-        logger.info("[BRoll] Trying generic/ local fallback folder...")
+        # 1. Local keyword-matched
         raw_clips.extend(
-            _search_local_broll(
-                query_keywords, local_broll_dir, product_category, conn, n_clips,
-                use_generic=True,
-            )
+            _search_local_broll(query_keywords, local_broll_dir, product_category, conn, n_clips)
         )
 
-    conn.close()
-    api_conn.close()
+        # 1.5 AI B-roll (Mode 11) - Nếu có reference image
+        if len(raw_clips) < n_clips and reference_image and os.path.exists(reference_image):
+            from modes.ai_broll.generation_queue import generate_batch_async
+            needed = n_clips - len(raw_clips)
+            # Bọc try-catch để fallback an toàn
+            try:
+                tasks_data = [{"prompt": f"@product {query_str}", "reference_image": reference_image} for _ in range(needed)]
+                logger.info(f"[BRoll] Kích hoạt AI_BROLL (Mode 11) tạo {needed} clips cho '{query_str}'")
+                ai_clips = generate_batch_async(tasks_data)
+                valid_ai_clips = [c for c in ai_clips if c is not None]
+                raw_clips.extend(valid_ai_clips)
+                if len(valid_ai_clips) < needed:
+                    logger.warning("[BRoll] AI_BROLL không đủ kết quả, fallback sang Pexels...")
+            except Exception as e:
+                logger.error(f"[BRoll] AI_BROLL thất bại: {e}")
 
-    # 6. Complete failure — caller uses Ken Burns
-    if not raw_clips:
-        logger.warning(f"[BRoll] All fallbacks exhausted for '{query_str}' — use Ken Burns.")
-        return []
+        # 2. Pexels
+        if len(raw_clips) < n_clips:
+            raw_clips.extend(_search_pexels(
+                query_str, pexels_api_key, product_category, conn, api_conn,
+                n_clips - len(raw_clips), temp_dir,
+            ))
 
-    # Rescale + trim each clip
-    processed = []
-    proc_dir  = os.path.join(temp_dir, "broll_processed")
-    os.makedirs(proc_dir, exist_ok=True)
+        # 3. Pixabay (24h cache mandatory)
+        if len(raw_clips) < n_clips:
+            raw_clips.extend(_search_pixabay(
+                query_str, pixabay_api_key, product_category, conn, api_conn,
+                n_clips - len(raw_clips), temp_dir,
+            ))
 
-    for i, src in enumerate(raw_clips[:n_clips]):
-        slug     = re.sub(r"[^a-z0-9]", "_", query_str[:20].lower())
-        rescaled = os.path.join(proc_dir, f"broll_{slug}_{i:02d}_scaled.mp4")
-        trimmed  = os.path.join(proc_dir, f"broll_{slug}_{i:02d}.mp4")
-        try:
-            rescale_clip(src, rescaled, out_w, out_h)
-            trim_clip(rescaled, trimmed, duration_sec)
-            processed.append(trimmed)
-        except Exception as exc:
-            logger.warning(f"[BRoll] Post-process failed for {src}: {exc}")
+        # 3.5 TikTok scraper — cào video viral miễn phí, không cần API key
+        if len(raw_clips) < n_clips:
+            needed = n_clips - len(raw_clips)
+            try:
+                from core.tiktok_scraper import scrape_tiktok_clips
+                tiktok_dir = os.path.join(temp_dir, "tiktok_broll")
+                logger.info(f"[BRoll] Thử TikTok scraper cho '{query_str}' ({needed} clips)...")
+                tiktok_clips = scrape_tiktok_clips(
+                    keyword=query_str,
+                    n=needed,
+                    output_dir=tiktok_dir,
+                    remove_watermark=True,
+                )
+                raw_clips.extend(tiktok_clips)
+                if tiktok_clips:
+                    logger.info(f"[BRoll] TikTok: {len(tiktok_clips)} clips từ '{query_str}'")
+            except Exception as e:
+                logger.warning(f"[BRoll] TikTok scraper thất bại (bỏ qua): {e}")
 
-    logger.info(f"[BRoll] Ready: {len(processed)} clips for '{query_str}' ({duration_sec:.1f}s each)")
-    return processed
+        # 4. Simplified keywords (strip adjectives, keep nouns)
+        if not raw_clips:
+            simplified = _simplify_keywords(query_keywords)
+            if simplified != query_keywords:
+                logger.info(f"[BRoll] Simplified keyword fallback: {simplified}")
+                raw_clips.extend(
+                    _search_local_broll(simplified, local_broll_dir, product_category, conn, n_clips)
+                )
+                if not raw_clips and pexels_api_key:
+                    raw_clips.extend(_search_pexels(
+                        " ".join(simplified), pexels_api_key, product_category, conn, api_conn,
+                        n_clips, temp_dir,
+                    ))
+                if not raw_clips and pixabay_api_key:
+                    raw_clips.extend(_search_pixabay(
+                        " ".join(simplified), pixabay_api_key, product_category, conn, api_conn,
+                        n_clips, temp_dir,
+                    ))
+
+        # 5. Generic/ folder (last-resort local — no keyword filter)
+        if not raw_clips:
+            logger.info("[BRoll] Trying generic/ local fallback folder...")
+            raw_clips.extend(
+                _search_local_broll(
+                    query_keywords, local_broll_dir, product_category, conn, n_clips,
+                    use_generic=True,
+                )
+            )
+
+        # 6. Complete failure — caller uses Ken Burns
+        if not raw_clips:
+            logger.warning(f"[BRoll] All fallbacks exhausted for '{query_str}' — use Ken Burns.")
+            return []
+
+        # Rescale + trim each clip
+        processed = []
+        proc_dir  = os.path.join(temp_dir, "broll_processed")
+        os.makedirs(proc_dir, exist_ok=True)
+
+        for i, src in enumerate(raw_clips[:n_clips]):
+            slug     = re.sub(r"[^a-z0-9]", "_", query_str[:20].lower())
+            rescaled = os.path.join(proc_dir, f"broll_{slug}_{i:02d}_scaled.mp4")
+            trimmed  = os.path.join(proc_dir, f"broll_{slug}_{i:02d}.mp4")
+            try:
+                rescale_clip(src, rescaled, out_w, out_h)
+                trim_clip(rescaled, trimmed, duration_sec)
+                processed.append(trimmed)
+            except Exception as exc:
+                logger.warning(f"[BRoll] Post-process failed for {src}: {exc}")
+
+        logger.info(f"[BRoll] Ready: {len(processed)} clips for '{query_str}' ({duration_sec:.1f}s each)")
+        return processed
+    finally:
+        # Đóng DB kể cả khi một nhánh fallback ném exception (trước đây rò 2 connection mỗi lần lỗi)
+        conn.close()
+        api_conn.close()

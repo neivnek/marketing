@@ -49,7 +49,7 @@ def apply_text_mask_and_subtitles(
             script_text=khmer_script,
             timestamps=[dur],
             output_path=ass_path,
-            font_name="Hanuman",
+            font_name="Noto Sans Khmer",
         )
 
         burn_hardsub(masked_video, ass_path, "assets/fonts", output_video)

@@ -21,6 +21,7 @@ import logging
 import os
 from dataclasses import dataclass, field
 from typing import Optional
+from core.gemini_pool import get_pooled_client
 
 logger = logging.getLogger(__name__)
 
@@ -147,7 +148,7 @@ def _batch_translate_keywords(
             from google import genai
             from google.genai import types
 
-            client = genai.Client(api_key=api_key)
+            client = get_pooled_client(api_key=api_key)
             prompt = (
                 "Translate these product ad keywords to concise English search terms "
                 "(for Pexels/Pixabay stock video search). "

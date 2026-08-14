@@ -1,17 +1,26 @@
 {
-  "pipeline_name": "Hybrid Zero-Cost Khmer Ad Video Generator",
-  "version": "2.0.0",
-  "description": "Automated pipeline with dual routing: Auto-Autonomous (Gemini AI) and Manual Override.",
+  "_note": "REFERENCE ONLY — no code reads this file. The runtime source of truth is the dataclasses in core/config.py (load_config() returns PipelineConfig() defaults). Keep this file in sync when those defaults change.",
+
+  "pipeline_name": "Hybrid Zero-Cost Video Pipeline",
+  "version": "3.5.0",
+  "description": "Automated 9:16 short-form ad video generation with 11 workflow modes, zero-cost AI/TTS/stock stack.",
 
   "global_constraints": {
     "language": "km",
     "language_label": "Khmer (Cambodia)",
+    "supported_languages": [
+      "khmer", "vietnamese", "english", "thai", "indonesian",
+      "chinese", "malay", "tagalog", "hindi", "korean", "japanese", "burmese"
+    ],
     "tts_voices": {
-      "female": "km-KH-SreymomNeural",
-      "male": "km-KH-PisethNeural"
+      "khmer_female": "km-KH-SreymomNeural",
+      "khmer_male": "km-KH-PisethNeural",
+      "vietnamese_female": "vi-VN-HoaiMyNeural",
+      "vietnamese_male": "vi-VN-NamMinhNeural"
     },
     "tts_voice_default": "km-KH-SreymomNeural",
-    "khmer_fonts": ["Hanuman", "Battambang", "Moul", "Nokora"],
+    "fonts": ["Noto Sans Khmer", "Noto Sans"],
+    "font_files": ["assets/fonts/NotoSansKhmer-Bold.ttf", "assets/fonts/NotoSans-Bold.ttf"],
     "font_unicode_range": "U+1780-U+17FF",
     "output_format": "mp4",
     "output_resolution": { "width": 1080, "height": 1920 },
@@ -23,47 +32,70 @@
     "duration_range_seconds": { "min": 15, "max": 90 }
   },
 
+  "workflow_modes": {
+    "cli_and_ui": [
+      { "value": "auto",       "label": "Auto-Autonomous" },
+      { "value": "manual",     "label": "Manual Override" },
+      { "value": "dub_only",   "label": "Dub Only" },
+      { "value": "dub_remix",  "label": "Dub Remix" },
+      { "value": "full_remix", "label": "Full Remix" },
+      { "value": "polish",     "label": "Polish" },
+      { "value": "pro_editor", "label": "Pro Editor" },
+      { "value": "news_auto",  "label": "News Auto (JSON)" },
+      { "value": "news_ads",   "label": "News Ads" },
+      { "value": "news_pro",   "label": "News Pro" }
+    ],
+    "ui_only": [
+      { "value": "ultimate_ad", "label": "Ultimate Ad (Mode 10)" },
+      { "value": "fb_shorts",   "label": "FB Shorts (generative / remix)" },
+      { "value": "ai_broll",    "label": "AI B-Roll generation" }
+    ]
+  },
+
   "input_schema": {
-    "Workflow_Mode": {
-      "type": "dropdown",
-      "options": [
-        { "value": "auto",   "label": "Lựa chọn 1: Auto-Autonomous" },
-        { "value": "manual", "label": "Lựa chọn 2: Manual Override" }
-      ],
-      "required": true
-    },
     "Product_Image": {
       "type": "file_upload",
       "accepted_formats": ["jpg", "jpeg", "png", "webp"],
       "max_files": 1,
-      "required": true,
-      "description": "Global — static product image used in both modes"
+      "description": "Static product image — used by most generative modes"
     },
     "Category_Keyword": {
       "type": "text",
       "required_for_mode": ["auto"],
-      "description": "Mode 1 only — keyword for Meta Ads search"
+      "description": "Keyword for Meta Ads Library search"
     },
     "Manual_Ref_Video": {
       "type": "file_upload",
       "accepted_formats": ["mp4", "mov", "avi", "mkv"],
       "required_for_mode": ["manual"],
-      "description": "Mode 2 only — reference video for pacing/scene cut extraction"
+      "description": "Reference video for pacing / scene cut extraction"
     },
     "Manual_Script": {
       "type": "textarea",
       "required_for_mode": ["manual"],
-      "description": "Mode 2 only — detailed Khmer script for TTS"
+      "description": "Voiceover script for TTS"
     },
     "Manual_Prompt": {
       "type": "text",
       "required_for_mode": ["manual"],
-      "description": "Mode 2 only — motion style / color filter directive (e.g. 'warm cinematic slow zoom')"
+      "description": "Motion style / color filter directive (e.g. 'warm cinematic slow zoom')"
     }
   },
 
   "api_keys_env": {
-    "GEMINI_API_KEY": "AIza..."
+    "required": ["GEMINI_API_KEY"],
+    "optional": [
+      "GEMINI_MODEL", "GROQ_API_KEY", "PEXELS_API_KEY", "PIXABAY_API_KEY",
+      "YOUTUBE_API_KEY", "META_AD_ACCESS_TOKEN", "TIKTOK_AD_ACCESS_TOKEN",
+      "REPLICATE_API_TOKEN", "ELEVENLABS_API_KEY"
+    ]
+  },
+
+  "server": {
+    "default_port": 7860,
+    "port_env_vars": ["PORT", "GRADIO_SERVER_PORT"],
+    "share_env_var": "GRADIO_SHARE",
+    "inbrowser_env_var": "GRADIO_INBROWSER"
   },
 
   "meta_ads_scraper": {
@@ -82,20 +114,23 @@
   },
 
   "subtitle": {
-    "font_name": "Hanuman",
+    "font_name": "Noto Sans Khmer",
     "font_size": 52,
     "primary_color": "&H00FFFFFF",
     "outline_color": "&H00000000",
     "outline_width": 2.5,
     "shadow": 1,
     "margin_v": 80,
-    "alignment": 2
+    "alignment": 2,
+    "presets": ["classic_box", "outline_bold", "karaoke_highlight", "minimal_clean"]
   },
 
   "directories": {
     "output_dir": "output",
-    "temp_dir":   "temp",
+    "temp_dir": "temp",
     "assets_dir": "assets",
-    "fonts_dir":  "assets/fonts"
+    "fonts_dir": "assets/fonts",
+    "local_broll_dir": "assets/local_broll",
+    "local_music_dir": "assets/local_music"
   }
 }

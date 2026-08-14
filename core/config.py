@@ -40,8 +40,9 @@ class GlobalConstraints:
     language_code:   str  = "km-KH"           # BCP-47 for Khmer
     tts_voice:       str  = "km-KH-SreymomNeural"  # default female voice
     tts_rate:        str  = "+0%"             # default playback speed
+    # Font families shipped in assets/fonts/ (see overlay_renderer._ensure_fonts)
     khmer_fonts:     list = field(default_factory=lambda: [
-        "Hanuman", "Battambang", "Moul", "Nokora"
+        "Noto Sans Khmer", "Noto Sans"
     ])
     output_format:   str  = "mp4"
     output_width:    int  = 1080
@@ -92,7 +93,7 @@ class KenBurnsConfig:
 
 @dataclass
 class SubtitleConfig:
-    font_name:     str   = "Hanuman"
+    font_name:     str   = "Noto Sans Khmer"
     font_size:     int   = 52
     primary_color: str   = "&H00FFFFFF"   # white
     outline_color: str   = "&H00000000"   # black
@@ -353,7 +354,7 @@ class UltimateAdInputs:
     subtitle_source:    str   = "auto"
     # "auto"         → auto-detect by template (recommended)
     # "template"     → hyperframes owns caption; skip pipeline burn_hardsub()
-    # "pipeline_ass" → pipeline ASS/Hanuman burn; disable template captions
+    # "pipeline_ass" → pipeline ASS/Noto Sans Khmer burn; disable template captions
 
     # ── Audio / TTS ───────────────────────────────
     tts_provider:       str   = "edge-tts"             # "edge-tts" (free default) | "elevenlabs" (paid, quota-limited)

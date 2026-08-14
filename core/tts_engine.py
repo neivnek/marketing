@@ -144,17 +144,26 @@ def get_audio_duration(mp3_path: str) -> float:
         return 0.0
 
 def _create_silent_mp3(output_path: str, duration: float = 0.5) -> None:
-    """Tạo một file MP3 im lặng khi text bị rỗng để tránh lỗi FFmpeg."""
+    """
+    Tạo một file MP3 im lặng khi text bị rỗng để tránh lỗi FFmpeg.
+
+    Nếu không tạo được thì RAISE — tuyệt đối không ghi file 0 byte, vì file rỗng
+    sẽ đi tiếp xuống pipeline và chết ở một bước ffmpeg xa hơn với lỗi khó hiểu.
+    """
+    import subprocess
     try:
-        import subprocess
         subprocess.run([
-            "ffmpeg", "-y", "-f", "lavfi", "-i", f"anullsrc=r=44100:cl=mono",
+            "ffmpeg", "-y", "-f", "lavfi", "-i", "anullsrc=r=44100:cl=mono",
             "-t", str(duration), "-q:a", "9", "-acodec", "libmp3lame", output_path
         ], capture_output=True, check=True)
-    except Exception as e:
-        logger.error(f"[TTS] Lỗi tạo silent MP3: {e}")
-        # Create a completely empty file as absolute fallback
-        open(output_path, 'wb').close()
+    except subprocess.CalledProcessError as e:
+        stderr = (e.stderr or b"").decode("utf-8", "replace") if isinstance(e.stderr, bytes) else (e.stderr or "")
+        raise RuntimeError(f"[TTS] Không tạo được file MP3 im lặng: {stderr[-500:]}") from e
+    except FileNotFoundError as e:
+        raise RuntimeError("[TTS] Không tìm thấy ffmpeg trong PATH khi tạo MP3 im lặng.") from e
+
+    if not os.path.isfile(output_path) or os.path.getsize(output_path) == 0:
+        raise RuntimeError(f"[TTS] File MP3 im lặng rỗng hoặc không tồn tại: {output_path}")
 
 async def list_khmer_voices() -> list[dict]:
     """

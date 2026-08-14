@@ -33,14 +33,27 @@ import hashlib
 import json
 import logging
 import os
+import re
 import sqlite3
 import time
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional
+from core.gemini_pool import get_pooled_client
 
 logger = logging.getLogger(__name__)
+
+
+def _strip_code_fence(text: str) -> str:
+    """
+    Gỡ ```json ... ``` quanh output của LLM.
+
+    KHÔNG dùng str.strip("```json") — strip() nhận một TẬP KÝ TỰ, nên nó gặm
+    mọi ký tự backtick/j/s/o/n ở hai đầu chuỗi chứ không chỉ hậu tố mong muốn.
+    """
+    return re.sub(r"^```[a-z]*\n?|```$", "", (text or "").strip()).strip()
+
 
 CACHE_TTL_DAYS = 30
 # Gemini 3.x model prefixes that support grounding
@@ -211,7 +224,7 @@ def identify_product_from_image(
     from google import genai
     from google.genai import types
 
-    client = genai.Client(api_key=api_key)
+    client = get_pooled_client(api_key=api_key)
 
     prompt = (
         "You are an expert E-Commerce Marketing Analyst and Smart OCR AI. "
@@ -269,7 +282,7 @@ def identify_product_from_image(
                 safety_settings=safety_settings,
             ),
         )
-        raw = response.text.strip().strip("```json").strip("```").strip()
+        raw = _strip_code_fence(response.text)
         data = json.loads(raw)
         identity = ProductIdentity(
             name_guess         = data.get("name_guess", "")[:120],
@@ -322,7 +335,7 @@ def research_product_web(
     from google import genai
     from google.genai import types
 
-    client  = genai.Client(api_key=api_key)
+    client  = get_pooled_client(api_key=api_key)
     name    = identity.name_guess
     category = identity.category or "consumer product"
 
@@ -388,7 +401,7 @@ def research_product_web(
             tools=[grounding_tool],
         )
 
-        raw = response.text.strip().strip("```json").strip("```").strip()
+        raw = _strip_code_fence(response.text)
         data = json.loads(raw)
 
         # Extract grounding source URLs for traceability (Rule 13)

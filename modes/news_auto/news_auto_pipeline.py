@@ -188,7 +188,7 @@ def run_news_auto_pipeline(
         script_text=full_script_text,
         timestamps=timestamps,
         output_path=ass_path,
-        font_name="Hanuman",
+        font_name="Noto Sans Khmer",
     )
 
     subbed_video = os.path.join(work_temp, "subbed.mp4")
@@ -268,7 +268,7 @@ def _create_news_title_clip(text: str, output_path: str, duration: float, out_w:
     clean_text = text.replace(":", "\\:").replace("'", "").strip()[:50]
     vf = (
         f"color=c=0x0f172a:s={out_w}x{out_h}:d={duration},"
-        f"drawtext=fontfile='assets/fonts/Hanuman.ttf':text='{clean_text}':"
+        f"drawtext=fontfile='assets/fonts/NotoSansKhmer-Bold.ttf':text='{clean_text}':"
         f"fontsize=48:fontcolor=white:x=(w-tw)/2:y=(h-th)/2:box=1:boxcolor=0x1e293b@0.8:boxborderw=20"
     )
     cmd = [

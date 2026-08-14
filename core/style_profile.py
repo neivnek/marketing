@@ -27,11 +27,24 @@ import json
 import logging
 import mimetypes
 import os
+import re
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
+from core.gemini_pool import get_pooled_client
 
 logger = logging.getLogger(__name__)
+
+
+def _strip_code_fence(text: str) -> str:
+    """
+    Gỡ ```json ... ``` quanh output của LLM.
+
+    KHÔNG dùng str.strip("```json") — strip() nhận một TẬP KÝ TỰ, nên nó gặm
+    mọi ký tự backtick/j/s/o/n ở hai đầu chuỗi chứ không chỉ hậu tố mong muốn.
+    """
+    return re.sub(r"^```[a-z]*\n?|```$", "", (text or "").strip()).strip()
+
 
 PROFILE_DIR_DEFAULT = "assets/style_profiles"
 MAX_VIDEO_SIZE_MB = 50  # skip videos larger than this to avoid API limits
@@ -178,7 +191,7 @@ def analyze_style_from_videos(
     if not profile_name:
         profile_name = f"Style Profile {profile_id}"
 
-    client = genai.Client(api_key=api_key)
+    client = get_pooled_client(api_key=api_key)
 
     # Build contents: [video_part_1, video_part_2, ..., prompt]
     logger.info(
@@ -213,7 +226,7 @@ def analyze_style_from_videos(
                 response_mime_type="application/json",
             ),
         )
-        raw = response.text.strip().strip("```json").strip("```").strip()
+        raw = _strip_code_fence(response.text)
         style_dna = json.loads(raw)
         logger.info(f"[StyleProfile] Style DNA extracted: pacing={style_dna.get('pacing')}, "
                     f"hook={style_dna.get('hook_style')}, "

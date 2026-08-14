@@ -20,6 +20,7 @@ import logging
 import shutil
 import subprocess
 from typing import Dict, List, Optional
+from core.gemini_pool import get_pooled_client
 
 logger = logging.getLogger(__name__)
 
@@ -75,7 +76,7 @@ def _generate_variant_scripts(product_info: dict) -> Optional[dict]:
         from google import genai
         from google.genai import types
 
-        client = genai.Client(api_key=api_key)
+        client = get_pooled_client(api_key=api_key)
 
         prompt = _VARIANT_PROMPT.format(
             product_name=product_info.get("product_name", "sản phẩm"),
@@ -170,7 +171,7 @@ def _render_variant_video(
         safe_overlay = overlay.replace("'", "\\'").replace(":", "\\:")
         vf_filter += (
             f",drawtext=text='{safe_overlay}'"
-            ":fontfile=assets/fonts/Hanuman.ttf"
+            ":fontfile=assets/fonts/NotoSansKhmer-Bold.ttf"
             ":fontcolor=white:fontsize=56"
             ":x=(w-text_w)/2:y=h-220"
             ":box=1:boxcolor=black@0.65:boxborderw=14"

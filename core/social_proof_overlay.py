@@ -28,7 +28,7 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 # Font path used across all overlay types — must match overlay_renderer.py
-_DEFAULT_FONT = "assets/fonts/Hanuman.ttf"
+_DEFAULT_FONT = "assets/fonts/NotoSansKhmer-Bold.ttf"
 
 
 def _font_arg(font_path: str) -> str:

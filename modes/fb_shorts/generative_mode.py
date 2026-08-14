@@ -172,7 +172,7 @@ def run_generative_mode(inputs: GenerativeInputs, output_dir: str, temp_dir: str
         script_text=khmer_script,
         timestamps=clip_timestamps,
         output_path=sub_ass,
-        font_name="Hanuman",
+        font_name="Noto Sans Khmer",
         )
     final_path = str(Path(output_dir) / "fb_gen_output.mp4")
     burn_hardsub(overlaid_path, sub_ass, "assets/fonts", final_path)
