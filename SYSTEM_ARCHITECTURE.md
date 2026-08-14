@@ -121,7 +121,7 @@ End-user instructions (in Vietnamese) live in [`START.md`](START.md).
 | `auto` | `modes/auto/` | Scrape a competitor ad from Meta Ads Library → Gemini analyzes video + product image → script + cut timestamps → Ken Burns render → TTS → hardsub |
 | `manual` | `modes/manual/` | User supplies script + motion prompt; pacing extracted from a reference video via FFprobe; prompt parsed into zoom/pan/color params |
 | `dub_only` | `modes/dub_only/` | Replace a video's audio with TTS voiceover (auto-generating the script if empty), tempo-match to duration, optional burned subtitles |
-| `dub_remix` | `modes/dub/` | Dub + light re-edit variant |
+| `dub_remix` | `modes/dub/` | Dub + light re-edit variant (replace or mix over the original audio, optional subtitles) |
 | `full_remix` | `modes/full_remix/` | Strip original audio → new voiceover → mask original on-screen text (box/blur/branded) → music mix → re-cut UGC remix. Outputs `_main.mp4` + `_remix.mp4` |
 | `polish` | `modes/polish/` | Post-process a finished video: watermark, price badge, social proof, then prepend N hook variants → N MP4s |
 | `pro_editor` | `modes/pro_editor/` | Full ad pipeline: product research → Hook-PAS-Proof-CTA `CreativeScript` JSON → shotlist → B-roll → prosody TTS → overlays → music → N hook variants |
@@ -193,6 +193,11 @@ Validated and sanitized by `modes/news_auto/json_schema_validator.py` before use
   "JSON" into the system prompt (Groq requires it), so `json.loads(response.text)` still works
   on the fallback path.
 
+### `core/ffmpeg_utils.py` — audio contract
+- `adjust_audio_speed(...)` always produces `output_audio`. When the source duration can't be read
+  (or the target is 0) it copies the input instead of returning early, because the next ffmpeg step
+  consumes that path and used to die with an empty `CalledProcessError`.
+
 ### `core/tts_engine.py`
 - `synthesize_khmer(script_text, output_path, voice="km-KH-SreymomNeural") -> str`
 - Vietnamese path defaults to `vi-VN-HoaiMyNeural` (male: `vi-VN-NamMinhNeural`).
@@ -229,8 +234,11 @@ Validated and sanitized by `modes/news_auto/json_schema_validator.py` before use
 
 ### Web UI — `app2.py` (primary)
 `python app2.py` → Gradio on **port 7860** (matching `Dockerfile` and the Spaces `app_port`).
-Overridable per run: `PORT` or `GRADIO_SERVER_PORT` for the port, `GRADIO_SHARE=0` to disable the
-public share tunnel, `GRADIO_INBROWSER=0` to stop it opening a browser (both needed in containers).
+Overridable per run: `PORT` or `GRADIO_SERVER_PORT` for the port, `GRADIO_SHARE=1` to opt into the
+public share tunnel (off by default — it exposes the app, running on your keys, to anyone with the
+link), `GRADIO_INBROWSER=0` to stop it opening a browser.
+Per-run intermediates go to `tempfile.mkdtemp(dir="temp")` via `_run_temp_dir()`; never write to a
+fixed `temp/<name>` path, or concurrent users overwrite each other.
 Top-level tabs: Magic One-Click · Magic One-Click (Classic) · URL → Multi-Variant Ads ·
 Local Store Ads · Generative (FB Shorts, News Auto) · Reprocess (Dub Only, Remix, Full Remix) ·
 Commerce (Ultimate Ad, Visual Search, Ad Spy, Scene Machine, Stockpile Curator, Logo Remover,
@@ -238,7 +246,8 @@ Auto-Discovery, Pro Editor, News Ads, News Pro, Polish) · Guide · Style Profil
 
 ### CLI — `main.py`
 `--mode` accepts: `auto`, `manual`, `news_auto`, `pro_editor`, `news_ads`, `news_pro`,
-`dub_only`, `full_remix`, `polish`. *(`ultimate_ad`, `fb_shorts`, `ai_broll` are Web-UI only.)*
+`dub_only`, `full_remix`, `polish`, `ultimate_ad`. *(`fb_shorts` and `ai_broll` are Web-UI only;
+`dub_remix` dispatches through the router but has no CLI flag bundle yet.)*
 
 ```bash
 # Auto-Autonomous

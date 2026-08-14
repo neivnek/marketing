@@ -27,7 +27,6 @@ logger = logging.getLogger(__name__)
 GROQ_MODELS = [
     "llama-3.3-70b-versatile",    # Mạnh nhất, ngang GPT-4
     "llama-3.1-8b-instant",       # Siêu nhanh, nhẹ hơn
-    "mixtral-8x7b-32768",         # Context window lớn
 ]
 
 _EXHAUSTED_KEYS: set = set()

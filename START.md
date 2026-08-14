@@ -95,7 +95,10 @@ python app2.py
 Trình duyệt tự mở tại **http://localhost:7860**
 
 Muốn đổi cổng (nếu 7860 đang bận): `PORT=7871 python app2.py`
-Chạy trong Docker/server không cần link chia sẻ: `GRADIO_SHARE=0 GRADIO_INBROWSER=0 python app2.py`
+
+> **Link chia sẻ công khai giờ TẮT mặc định.** Trước đây app luôn tạo public URL — ai có link
+> đều dùng được, và chạy bằng API key trong `.env` của bạn. Cần bật lại thì chạy:
+> `GRADIO_SHARE=1 python app2.py`
 
 ### Các tính năng trên Web UI
 
@@ -124,7 +127,7 @@ upload ảnh sản phẩm, nhập tên + giá → bấm **Tạo Video** → nh�
 ## ⚡ PHẦN 5: DÒNG LỆNH CLI (cho người dùng nâng cao)
 
 Kích hoạt môi trường trước (1 lần mỗi phiên), rồi chạy `main.py`.
-CLI hỗ trợ 9 chế độ; Ultimate Ad / FB Shorts / AI B-roll chỉ có trên Web UI.
+CLI hỗ trợ 10 chế độ (kể cả Ultimate Ad); FB Shorts / AI B-roll chỉ có trên Web UI.
 
 ### 🟢 Auto — tự động hoàn toàn
 ```bash
@@ -177,6 +180,12 @@ python main.py --mode pro_editor --product-image "gel.jpg" --product-name "Gôm 
     --pain-points "Tóc rối,Xẹp mũ bảo hiểm" --hook-variants 3 --skip-product-research --output "output"
 ```
 
+### 🌟 Ultimate Ad — chế độ mạnh nhất (giờ đã dùng được từ CLI)
+```bash
+python main.py --mode ultimate_ad --product-image "gel.jpg" --product-name "Gôm Vuốt Tóc" \
+    --price "15,000 KHR" --target-language khmer --benefits "Giữ nếp 24h,Thơm mát" --output "output"
+```
+
 ### 📰 News — video dạng bản tin
 ```bash
 python main.py --mode news_auto --json-input "tin.json" --channel-name "KÊNH CỦA BẠN" --quality 1080p --output "output"
@@ -190,6 +199,7 @@ python main.py --mode news_pro --product-image "gel.jpg" --product-name "Tên SP
 |---|---|
 | `--caption-style` | `classic_box`, `outline_bold`, `karaoke_highlight`, `minimal_clean` |
 | `--hook-variants N` | Số bản A/B test (mặc định 3, tối đa 5) |
+| `--target-language` | Ngôn ngữ đầu ra cho `ultimate_ad`: `khmer`, `vietnamese`, `english` |
 | `--tts-voice` | Đổi giọng đọc (mặc định `km-KH-SreymomNeural`; tiếng Việt: `vi-VN-HoaiMyNeural`) |
 | `--skip-product-research` | Bỏ nghiên cứu web, dùng `--benefits` / `--pain-points` trực tiếp |
 | `--force-refresh-research` | Bỏ cache 30 ngày, nghiên cứu lại từ đầu |

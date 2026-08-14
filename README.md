@@ -43,7 +43,7 @@ pip install -r requirements.txt
 python app2.py
 ```
 
-The Gradio UI opens at `http://localhost:7860` (override with `PORT=7871`). `main.py` exposes a CLI covering nine of the
+The Gradio UI opens at `http://localhost:7860` (override with `PORT=7871`). `main.py` exposes a CLI covering ten of the
 modes — see [`START.md`](START.md) §5.
 
 Requires Python 3.10+ and FFmpeg in `PATH`.
@@ -63,4 +63,5 @@ pipeline degrades gracefully without them.
 
 Deploys to Hugging Face Spaces via the provided `Dockerfile` and the metadata block above.
 The app binds **7860** by default, matching `EXPOSE 7860` and the `app_port` declared above.
-In a container, disable the share tunnel and browser launch: `GRADIO_SHARE=0 GRADIO_INBROWSER=0`.
+The public share tunnel is off by default; opt in with `GRADIO_SHARE=1` (it exposes the app,
+running on your API keys, to anyone holding the link).

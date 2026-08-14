@@ -1,5 +1,5 @@
 """
-Quick import smoke test — run from d:\ADS\pipeline\
+Quick import smoke test — chạy từ thư mục gốc repo:
 python smoke_test.py
 """
 import sys, os
@@ -112,6 +112,33 @@ try:
 except Exception as e:
     errors.append(f"pipeline orchestrators: {e}")
     print(f"  ✗ pipeline orchestrators: {e}")
+
+# Các mode còn lại — trước đây smoke test bỏ sót nên pass mà app vẫn có thể chết khi khởi động
+try:
+    from modes.ultimate_ad.ultimate_ad_pipeline import run_ultimate_ad_pipeline
+    from modes.fb_shorts.fb_shorts_pipeline import run_fb_shorts_pipeline
+    from modes.ai_broll.ai_broll_pipeline import generate_ai_broll_set
+    from modes.news_ads.news_ads_pipeline import run_news_ads_pipeline
+    from modes.news_pro.news_pro_pipeline import analyze_image_and_research, render_from_script
+    from modes.dub.dub_pipeline import run_dub_pipeline
+    print("  ✓ pipeline orchestrators (ultimate_ad, fb_shorts, ai_broll, news_ads, news_pro, dub)")
+except Exception as e:
+    errors.append(f"pipeline orchestrators (phần 2): {e}")
+    print(f"  ✗ pipeline orchestrators (phần 2): {e}")
+
+# Mọi WorkflowMode phải dispatch được qua router (bắt enum chết như DUB_REMIX trước đây)
+try:
+    import inspect
+    from core.config import WorkflowMode
+    from core import router as _router
+    _src = inspect.getsource(_router.run_pipeline)
+    _missing = [m.name for m in WorkflowMode if f"WorkflowMode.{m.name}" not in _src]
+    if _missing:
+        raise AssertionError(f"mode không có nhánh dispatch trong router: {', '.join(_missing)}")
+    print(f"  ✓ router dispatch đủ {len(list(WorkflowMode))} WorkflowMode")
+except Exception as e:
+    errors.append(f"router dispatch coverage: {e}")
+    print(f"  ✗ router dispatch coverage: {e}")
 
 # ── Summary ──────────────────────────────────────────────────────
 print("\n" + "═"*50)

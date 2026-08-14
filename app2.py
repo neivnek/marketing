@@ -10,6 +10,7 @@ import logging
 import os
 import queue
 import sys
+import tempfile
 import threading
 from pathlib import Path
 
@@ -27,6 +28,19 @@ logging.basicConfig(
     datefmt="%H:%M:%S",
 )
 logger = logging.getLogger(__name__)
+
+
+def _run_temp_dir(prefix: str) -> str:
+    """
+    Thư mục tạm riêng cho mỗi lần chạy.
+
+    Trước đây các bước trung gian ghi vào đường dẫn cố định (temp/mv_clean_0.mp4,
+    temp/clean_video_<tên>.mp4...), nên hai người dùng chạy song song sẽ ghi đè
+    file của nhau — dễ xảy ra vì UI có thể bật share link công khai.
+    """
+    os.makedirs("temp", exist_ok=True)
+    return tempfile.mkdtemp(prefix=f"{prefix}_", dir="temp")
+
 
 # ──────────────────────────────────────────────────────────────────
 # Live log capture
@@ -537,9 +551,10 @@ def build_ui() -> gr.Blocks:
                         # Xóa logo
                         from core.logo_remover import remove_video_logo
                         clean_brolls = []
+                        _mv_tmp = _run_temp_dir("mv_clean")
                         for i, vid in enumerate(raw_brolls):
                             try:
-                                out = f"temp/mv_clean_{i}.mp4"
+                                out = os.path.join(_mv_tmp, f"clean_{i}.mp4")
                                 cleaned = remove_video_logo(vid, out, mode="auto_tiktok")
                                 clean_brolls.append(cleaned if cleaned else vid)
                             except Exception:
@@ -1523,7 +1538,7 @@ Hãy viết chuẩn tiếng Việt bán hàng hấp dẫn, giữ nguyên phong c
 
                             yield None, "🧹 Đang tiến hành xóa logo và watermark khỏi video..."
                             from core.logo_remover import remove_video_logo
-                            out_p = f"temp/clean_video_{os.path.basename(vp)}"
+                            out_p = os.path.join(_run_temp_dir("logo_remover"), os.path.basename(vp))
 
                             mode_key = "auto_tiktok"
                             if "Tọa độ" in mode_choice:
@@ -1603,7 +1618,7 @@ Hãy viết chuẩn tiếng Việt bán hàng hấp dẫn, giữ nguyên phong c
                             
                             vp = _resolve_file(vid_file)
                             from core.video_assembly_engine import assemble_existing_video
-                            out_p = f"temp/assembly_final_{os.path.basename(vp)}"
+                            out_p = os.path.join(_run_temp_dir("assembly"), os.path.basename(vp))
                             
                             res = assemble_existing_video(
                                 video_path=vp,
@@ -2454,7 +2469,9 @@ if __name__ == "__main__":
     # Tắt link chia sẻ công khai / tự mở trình duyệt khi chạy trong container:
     #   GRADIO_SHARE=0 GRADIO_INBROWSER=0
     _off = ("0", "false", "no")
-    SHARE     = os.getenv("GRADIO_SHARE", "1").strip().lower() not in _off
+    # Mặc định TẮT: share=True tạo public URL cho bất kỳ ai có link, chạy bằng
+    # API key trong .env của bạn. Bật lại khi cần: GRADIO_SHARE=1 python app2.py
+    SHARE     = os.getenv("GRADIO_SHARE", "0").strip().lower() not in _off
     INBROWSER = os.getenv("GRADIO_INBROWSER", "1").strip().lower() not in _off
 
     print("\n" + "=" * 60)

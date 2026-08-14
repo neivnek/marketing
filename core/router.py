@@ -8,7 +8,7 @@
 import logging
 from pathlib import Path
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Any, Optional
 
 from core.config import WorkflowMode, PipelineConfig, load_config, ProEditorInputs, NewsAdsInputs, NewsProInputs, DubOnlyInputs, PolishInputs, UltimateAdInputs
 
@@ -80,6 +80,8 @@ class PipelineInputs:
     pro_editor:    Optional[ProEditorInputs] = None
     output_dir:    str                       = "output"
     ultimate_ad:   Optional[UltimateAdInputs] = None
+    # DubInputs sống trong modes/dub/dub_pipeline.py — để Any tránh core import ngược modes
+    dub:           Optional[Any]              = None
 
 
 # ──────────────────────────────────────────────
@@ -115,6 +117,15 @@ def validate_inputs(inputs: PipelineInputs) -> None:
     elif inputs.mode == WorkflowMode.DUB_ONLY:
         if not inputs.dub_only or not Path(inputs.dub_only.source_video_path).is_file():
             raise ValueError(f"Dub Only mode requires a valid source_video path: {inputs.dub_only.source_video_path if inputs.dub_only else None}")
+
+    elif inputs.mode == WorkflowMode.DUB_REMIX:
+        if not inputs.dub or not Path(inputs.dub.source_video).is_file():
+            raise ValueError(
+                f"Dub Remix mode requires a valid source_video path: "
+                f"{inputs.dub.source_video if inputs.dub else None}"
+            )
+        if not str(getattr(inputs.dub, "script", "")).strip():
+            raise ValueError("Dub Remix mode requires a non-empty script.")
 
     elif inputs.mode == WorkflowMode.FULL_REMIX:
         if not inputs.full_remix or not Path(inputs.full_remix.source_video).is_file():
@@ -223,6 +234,10 @@ def run_pipeline(inputs: PipelineInputs, cfg: Optional[PipelineConfig] = None) -
     elif inputs.mode == WorkflowMode.DUB_ONLY:
         from modes.dub_only.dub_only_pipeline import run_dub_only_pipeline
         output_path = run_dub_only_pipeline(inputs.dub_only, cfg.output_dir, cfg.temp_dir)
+
+    elif inputs.mode == WorkflowMode.DUB_REMIX:
+        from modes.dub.dub_pipeline import run_dub_pipeline
+        output_path = run_dub_pipeline(inputs.dub, cfg.output_dir, cfg.temp_dir)
 
     elif inputs.mode == WorkflowMode.FULL_REMIX:
         from modes.full_remix.full_remix_pipeline import run_full_remix_pipeline

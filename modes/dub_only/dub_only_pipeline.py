@@ -66,7 +66,10 @@ def run_dub_only_pipeline(inputs: DubOnlyInputs, output_dir: str, temp_dir: str)
         "-shortest",
         muxed_video,
     ]
-    subprocess.run(cmd_merge, capture_output=True, check=True)
+    merge = subprocess.run(cmd_merge, capture_output=True, text=True)
+    if merge.returncode != 0:
+        # check=True nuốt mất stderr của ffmpeg -> lỗi rỗng không debug được
+        raise RuntimeError(f"FFmpeg lỗi khi ghép audio vào video:\n{merge.stderr[-800:]}")
     logger.info(f"    ✓ Original audio stripped and replaced.")
 
     final_output = os.path.join(output_dir, f"dub_only_{Path(source_video).name}")

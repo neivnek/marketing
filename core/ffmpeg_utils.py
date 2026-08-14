@@ -401,15 +401,29 @@ def normalize_segment_cfr(
     logger.debug(f"[CFR] Normalized {input_path} -> {output_path} at {fps}fps")
     return output_path
 
-def adjust_audio_speed(input_audio: str, output_audio: str, target_duration: float):
-    """Adjust audio speed to match a target duration."""
+def adjust_audio_speed(input_audio: str, output_audio: str, target_duration: float) -> str:
+    """
+    Adjust audio speed to match a target duration.
+
+    Luôn tạo ra `output_audio` — kể cả khi không đo được thời lượng hoặc
+    target_duration không hợp lệ (khi đó chỉ copy nguyên bản, không đổi tốc độ).
+    Trước đây hàm này `return` sớm mà không tạo file, khiến bước ffmpeg kế tiếp
+    chết với lỗi rỗng vì input không tồn tại.
+    """
     from core.tts_engine import get_audio_duration
     dur = get_audio_duration(input_audio)
-    if dur <= 0:
-        return
+
+    if dur <= 0 or target_duration <= 0:
+        logger.warning(
+            f"[Audio] Không đo được thời lượng (audio={dur:.2f}s, target={target_duration:.2f}s) "
+            f"— copy nguyên bản, bỏ qua chỉnh tốc độ."
+        )
+        shutil.copyfile(input_audio, output_audio)
+        return output_audio
+
     ratio = dur / target_duration
-    
-    # ffpmeg atempo filter is limited between 0.5 and 2.0
+
+    # ffmpeg atempo filter is limited between 0.5 and 2.0
     # we can chain them if we need, but for simplicity a single ratio or capping it works for most minor adjustments.
     if ratio < 0.5: ratio = 0.5
     if ratio > 2.0: ratio = 2.0
@@ -420,6 +434,10 @@ def adjust_audio_speed(input_audio: str, output_audio: str, target_duration: flo
         "-filter:a", f"atempo={ratio}",
         output_audio
     ], label="adjust_audio_speed")
+
+    if not os.path.isfile(output_audio):
+        raise RuntimeError(f"adjust_audio_speed không tạo được file: {output_audio}")
+    return output_audio
 
 
 # ──────────────────────────────────────────────

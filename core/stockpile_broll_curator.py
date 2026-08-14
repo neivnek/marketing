@@ -65,6 +65,21 @@ def curate_and_download_broll(
     2. Dùng yt-dlp cào video B-roll về `assets/local_broll/<slug>/`.
     3. Cắt tỉa thành các clip B-roll ngắn sẵn sàng cho pipeline dựng video.
     """
+    _PARTIAL_SUFFIXES = (".part", ".ytdl", ".temp", ".part-Frag")
+
+    def _cleanup_partials(folder: str) -> None:
+        """Xóa mảnh tải dở của yt-dlp (timeout/kill giữa chừng)."""
+        removed = 0
+        for f in os.listdir(folder):
+            if any(s in f for s in _PARTIAL_SUFFIXES):
+                try:
+                    os.remove(os.path.join(folder, f))
+                    removed += 1
+                except OSError as exc:
+                    logger.debug(f"[Stockpile] Không xóa được mảnh tải dở {f}: {exc}")
+        if removed:
+            logger.info(f"[Stockpile] Đã dọn {removed} mảnh tải dở (.part/.ytdl).")
+
     clean_slug = re.sub(r"[^a-zA-Z0-9_]", "_", keyword.lower()).strip("_") or "generic"
     target_folder = os.path.join(output_dir, clean_slug)
     os.makedirs(target_folder, exist_ok=True)
@@ -75,11 +90,18 @@ def curate_and_download_broll(
     downloaded_files = []
     clip_count = 0
 
+    # Ảnh chụp trước khi cào: chỉ những file MỚI mới được tính là kết quả lần này,
+    # tránh đếm nhầm clip của các lần chạy trước rồi báo "cào thành công N clips".
+    def _existing_mp4() -> set:
+        return {f for f in os.listdir(target_folder) if f.endswith(".mp4")}
+
+    before = _existing_mp4()
+
     for q in queries:
         if clip_count >= max_clips:
             break
 
-        temp_out = os.path.join(target_folder, f"stockpile_raw_%(id)s.%(ext)s")
+        temp_out = os.path.join(target_folder, "stockpile_raw_%(id)s.%(ext)s")
         # Sử dụng yt-dlp để tìm và tải 1-2 video Shorts/b-roll
         yt_cmd = [
             "yt-dlp",
@@ -94,16 +116,28 @@ def curate_and_download_broll(
 
         try:
             logger.info(f"[Stockpile] Đang cào B-roll cho query: '{q}'...")
-            subprocess.run(yt_cmd, timeout=45)
+            res = subprocess.run(yt_cmd, timeout=45, capture_output=True, text=True)
+            if res.returncode != 0:
+                logger.warning(
+                    f"[Stockpile] yt-dlp trả về mã {res.returncode} cho query '{q}': "
+                    f"{(res.stderr or '').strip()[-300:]}"
+                )
+        except subprocess.TimeoutExpired:
+            logger.warning(f"[Stockpile] yt-dlp quá 45s cho query '{q}' — bỏ qua query này.")
         except Exception as err:
             logger.warning(f"[Stockpile] Lỗi yt-dlp cho query '{q}': {err}")
+        finally:
+            # yt-dlp bị timeout/kill sẽ để lại mảnh .part, .ytdl, .temp nằm mãi
+            # trong kho B-roll (từng tích tụ tới 52MB). Dọn ngay sau mỗi query.
+            _cleanup_partials(target_folder)
 
-    # Lấy các file MP4 vừa cào về
-    for file in os.listdir(target_folder):
-        if file.endswith(".mp4") and clip_count < max_clips:
-            full_p = os.path.join(target_folder, file)
-            downloaded_files.append(full_p)
-            clip_count += 1
+        clip_count = len(_existing_mp4() - before)
+
+    # Chỉ lấy các file MP4 MỚI cào về trong lần chạy này
+    for file in sorted(_existing_mp4() - before):
+        if len(downloaded_files) >= max_clips:
+            break
+        downloaded_files.append(os.path.join(target_folder, file))
 
     logger.info(f"[Stockpile] Đã nạp thành công {len(downloaded_files)} clips B-roll vào kho '{clean_slug}'.")
     return downloaded_files
