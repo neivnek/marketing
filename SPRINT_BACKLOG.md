@@ -1,6 +1,6 @@
 # 🗂️ SPRINT BACKLOG — Hybrid Zero-Cost Video Pipeline
 
-> Danh sách lỗi đang mở (6 mục), đã xác minh bằng chạy thật. Hai mục P0 đã đóng ở `d013c95`, `VID-05` ở `6af6e93`, `VID-03`/`VID-04`/`VID-06` ở `33ea93d`. Mỗi mục ghi rõ: triệu chứng đo được,
+> Danh sách lỗi đang mở (5 mục), đã xác minh bằng chạy thật. Hai mục P0 đã đóng ở `d013c95`, `VID-05` ở `6af6e93`, `VID-03`/`VID-04`/`VID-06` ở `33ea93d`, `VID-07` ở `8dbc382`. Mỗi mục ghi rõ: triệu chứng đo được,
 > nguyên nhân gốc, vị trí trong code, cách tái hiện, hướng sửa và điều kiện nghiệm thu.
 
 | | |
@@ -16,40 +16,16 @@
 | Mức | Còn mở | Nghĩa là |
 |---|---|---|
 | **P0** | 0 | ~~Chặn sử dụng~~ — đã đóng cả 2 ở `d013c95` |
-| **P1** | 1 | Ra file nhưng nội dung sai, không dùng để chạy quảng cáo được |
+| **P1** | 0 | Ra file nhưng nội dung sai, không dùng để chạy quảng cáo được |
 | **P2** | 4 | Mất tính năng hoặc giảm chất lượng, không chặn |
 | **SEC** | 1 | Bảo mật |
 
-**Đề xuất thứ tự làm:** `VID-07` (bỏ map audio cứng) → `SCR-01` (quyết định số phận TikTok scraper)
-→ `SEC-01` (rotate key) → chạy kiểm thử 4 pipeline nặng AI còn lại.
+**Đề xuất thứ tự làm:** `SEC-01` (rotate key — độc lập, làm ngay được) → `SCR-01` (quyết định số phận
+TikTok scraper) → `UI-01` + `AST-01` → chạy kiểm thử 4 pipeline nặng AI còn lại.
 
 ---
 
 ## P1 — Ra file nhưng nội dung sai
-
-### VID-07 · Ghép B-roll trong bản remix luôn thất bại
-
-**Triệu chứng.**
-
-```
-_mux_broll_with_audio stderr: set value '1:a:0' for option 'map': Invalid argument
-Error parsing options for output file .../remix0_broll_02_merged.mp4
-Segment 2 → B-roll mux failed, using original
-```
-
-**Nguyên nhân gốc.** Code map cứng `-map 1:a:0` trong khi clip B-roll (tải từ Pexels/Pixabay/YouTube)
-thường **không có luồng audio**. Lỗi bị nuốt rồi lặng lẽ "dùng bản gốc", nên B-roll không bao giờ
-được chèn vào bản remix.
-
-**Vị trí.** `modes/full_remix/remix_cut_generator.py::_mux_broll_with_audio`
-
-**Hướng sửa.** Kiểm tra clip có luồng audio không (`ffprobe`) rồi mới map; hoặc dùng
-`-map 1:a:0?` (dấu `?` = optional) để ffmpeg bỏ qua khi không có.
-
-**Nghiệm thu.** Chạy remix với B-roll không tiếng: log không còn dòng "B-roll mux failed", và bản
-remix thực sự có cảnh B-roll.
-
----
 
 ## P2 — Mất tính năng / giảm chất lượng
 
@@ -167,6 +143,7 @@ dùng chung `hook_variant_generator`.
 | `2f40801` | Đưa toàn bộ 18 call site Gemini về pool, sửa Groq fallback (JSON mode, chặn multimodal, nhận diện quota), thêm Playwright vào image |
 | `5fb9b39` | Sửa `adjust_audio_speed` luôn tạo output, `_create_silent_mp3` không ghi file 0 byte, dọn `.part` của stockpile, đóng SQLite khi lỗi, thư mục tạm riêng mỗi lần chạy, tắt share mặc định, nối `DUB_REMIX` vào router |
 | `538e50a` | Sửa giao diện Gradio 6: thanh tab hiện đủ 9 tab đồng nhất, header bảng kịch bản không còn vỡ khi bấm, sửa `.select()` lambda |
+| `8dbc382` | **VID-07** — nguyên nhân thật khác với phỏng đoán ban đầu: `-map 1:a:0` trỏ vào *segment* (đã bị tước audio) chứ không phải B-roll. Cấp im lặng làm input thay thế, và chuẩn hoá audio 48kHz stereo ngay trong `normalize_segment_cfr` nên mọi đường nối clip trong hệ thống đều an toàn |
 | `33ea93d` | **VID-03 / VID-04 / VID-06** — thêm `mux_audio_to_video()` áp một quy tắc chung: hình là chuẩn, tiếng đệm `apad` rồi cắt theo hình. `dub_only` hết cắt cụt (8.00s), `full_remix` tiếng phủ hết video, `polish` hết lệch (11.00s hình / 11.02s tiếng) nhờ khớp sample rate track im lặng của hook với body |
 | `6af6e93` | **VID-05** — `polish` dựng hook theo góc tiếp cận khác nhau từ dữ liệu thật (giá, lượt bán, đánh giá, thương hiệu) thay vì N bản `"🔥🔥🔥"` giống hệt; generator xoay vòng 5 preset chuyển động Ken Burns theo từng biến thể nên khác nhau cả về thị giác. Kiểm chứng: 3 bản cho ra vân tay khung hình khác nhau từng cặp |
 | `d013c95` | **VID-02** — TTS có thang retry (nguyên văn → bỏ dấu câu cuối → đổi giọng cùng ngôn ngữ), kiểm tra audio khác rỗng và đọc được thời lượng, dọn file hỏng giữa các lần thử.<br>**VID-01** — `news_auto` thay đoạn TTS hỏng bằng im lặng đúng độ dài thay vì đẩy file 0 byte vào concat; báo lỗi rõ ràng khi mọi đoạn đều hỏng. Kiểm chứng: câu gây lỗi giờ thành công ở lần thử 2 (14.976 byte), `news_auto` xuất MP4 2.8MB với hình 7.40s / tiếng 7.35s |
