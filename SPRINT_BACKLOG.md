@@ -1,6 +1,6 @@
 # 🗂️ SPRINT BACKLOG — Hybrid Zero-Cost Video Pipeline
 
-> Danh sách lỗi đang mở (9 mục), đã xác minh bằng chạy thật. Hai mục P0 đã đóng ở `d013c95`, `VID-05` đóng ở `6af6e93`. Mỗi mục ghi rõ: triệu chứng đo được,
+> Danh sách lỗi đang mở (6 mục), đã xác minh bằng chạy thật. Hai mục P0 đã đóng ở `d013c95`, `VID-05` ở `6af6e93`, `VID-03`/`VID-04`/`VID-06` ở `33ea93d`. Mỗi mục ghi rõ: triệu chứng đo được,
 > nguyên nhân gốc, vị trí trong code, cách tái hiện, hướng sửa và điều kiện nghiệm thu.
 
 | | |
@@ -16,85 +16,16 @@
 | Mức | Còn mở | Nghĩa là |
 |---|---|---|
 | **P0** | 0 | ~~Chặn sử dụng~~ — đã đóng cả 2 ở `d013c95` |
-| **P1** | 4 | Ra file nhưng nội dung sai, không dùng để chạy quảng cáo được |
+| **P1** | 1 | Ra file nhưng nội dung sai, không dùng để chạy quảng cáo được |
 | **P2** | 4 | Mất tính năng hoặc giảm chất lượng, không chặn |
 | **SEC** | 1 | Bảo mật |
 
-**Đề xuất thứ tự làm:** nhóm lệch tiếng/hình `VID-03` + `VID-04` + `VID-06` (cùng một họ,
-nên sửa chung một lượt) → `VID-07` → `SCR-01` → `SEC-01` → chạy kiểm thử 4 pipeline nặng AI còn lại.
+**Đề xuất thứ tự làm:** `VID-07` (bỏ map audio cứng) → `SCR-01` (quyết định số phận TikTok scraper)
+→ `SEC-01` (rotate key) → chạy kiểm thử 4 pipeline nặng AI còn lại.
 
 ---
 
 ## P1 — Ra file nhưng nội dung sai
-
-### VID-03 · `dub_only` cắt cụt đuôi video
-
-**Triệu chứng.** Video nguồn 8.00s → file xuất ra **6.42s**, mất 1.58s cuối.
-
-```
-dub_only_raw_tts.mp3        3.24s   (lời đọc gốc)
-dub_only_adjusted_tts.mp3   6.48s   (đã kéo giãn hết cỡ)
-dub_only_muxed.mp4          6.42s   ← video bị cắt theo audio
-```
-
-**Nguyên nhân gốc.** `adjust_audio_speed` kẹp `atempo` trong khoảng `[0.5, 2.0]`, nên lời đọc 3.24s
-chỉ kéo được tới 6.48s chứ không tới 8s. Sau đó lệnh mux dùng `-shortest` nên cắt video theo audio.
-Lời đọc càng ngắn so với video thì mất càng nhiều.
-
-**Vị trí.** `core/ffmpeg_utils.py::adjust_audio_speed` (kẹp tỉ lệ) ·
-`modes/dub_only/dub_only_pipeline.py` (`-shortest` trong `cmd_merge`)
-
-**Hướng sửa.** Không cắt video theo audio. Khi audio ngắn hơn: đệm im lặng cho đủ độ dài video
-(`apad` / `-af apad`) và bỏ `-shortest`, hoặc chỉ dùng `-shortest` khi audio dài hơn video.
-
-**Nghiệm thu.** Video ra luôn bằng đúng độ dài video nguồn (sai số < 0.1s) với lời đọc dài, ngắn và
-rất ngắn.
-
----
-
-### VID-04 · `polish`: audio dài hơn video 9 giây, cuối video đứng hình
-
-**Triệu chứng.** File khai 19.98s nhưng luồng video chỉ có 11.00s:
-
-```
-src_hook1_polished.mp4:  video=11.00s   audio=19.98s   container=19.98s
-```
-
-Trích khung hình từ giây 11 trở đi: không có gì. Người xem thấy video đứng hình 9 giây cuối.
-
-**Nguyên nhân gốc.** Bước nối hook + video đã polish không đồng bộ độ dài 2 luồng — audio được nối
-dài hơn phần hình.
-
-**Vị trí.** `modes/polish/polish_pipeline.py` (bước ghép hook) · `core/concat_helper.py`
-
-**Hướng sửa.** Sau khi nối, cắt hoặc đệm để hai luồng khớp nhau; thêm một bước kiểm tra cuối
-(`ffprobe` so `video.duration` với `audio.duration`, lệch quá ngưỡng thì sửa hoặc báo lỗi).
-
-**Nghiệm thu.** Mọi file xuất ra có `|video.duration − audio.duration| < 0.2s`.
-
----
-
-### VID-06 · `full_remix`: hơn 5 giây cuối im lặng
-
-**Triệu chứng.** Video 8.00s, audio chỉ 2.83s — không cắt hình (tốt hơn `VID-03`) nhưng phần cuối
-không có tiếng.
-
-```
-src_main.mp4:  video=8.000000   audio=2.832000
-[FR.1] ✓ New TTS audio: 2.8s  (video: 8.0s)
-```
-
-**Nguyên nhân gốc.** Cùng họ với `VID-03`: kịch bản ngắn hơn video và không có bước đệm/kéo giãn cho
-khớp.
-
-**Vị trí.** `modes/full_remix/audio_replace.py`
-
-**Hướng sửa.** Dùng chung giải pháp với `VID-03` — đệm im lặng tới hết video, hoặc lặp/kéo nhạc nền
-lấp phần trống nếu có nhạc.
-
-**Nghiệm thu.** Không có đoạn im lặng > 1s ở cuối video khi kịch bản ngắn.
-
----
 
 ### VID-07 · Ghép B-roll trong bản remix luôn thất bại
 
@@ -236,6 +167,7 @@ dùng chung `hook_variant_generator`.
 | `2f40801` | Đưa toàn bộ 18 call site Gemini về pool, sửa Groq fallback (JSON mode, chặn multimodal, nhận diện quota), thêm Playwright vào image |
 | `5fb9b39` | Sửa `adjust_audio_speed` luôn tạo output, `_create_silent_mp3` không ghi file 0 byte, dọn `.part` của stockpile, đóng SQLite khi lỗi, thư mục tạm riêng mỗi lần chạy, tắt share mặc định, nối `DUB_REMIX` vào router |
 | `538e50a` | Sửa giao diện Gradio 6: thanh tab hiện đủ 9 tab đồng nhất, header bảng kịch bản không còn vỡ khi bấm, sửa `.select()` lambda |
+| `33ea93d` | **VID-03 / VID-04 / VID-06** — thêm `mux_audio_to_video()` áp một quy tắc chung: hình là chuẩn, tiếng đệm `apad` rồi cắt theo hình. `dub_only` hết cắt cụt (8.00s), `full_remix` tiếng phủ hết video, `polish` hết lệch (11.00s hình / 11.02s tiếng) nhờ khớp sample rate track im lặng của hook với body |
 | `6af6e93` | **VID-05** — `polish` dựng hook theo góc tiếp cận khác nhau từ dữ liệu thật (giá, lượt bán, đánh giá, thương hiệu) thay vì N bản `"🔥🔥🔥"` giống hệt; generator xoay vòng 5 preset chuyển động Ken Burns theo từng biến thể nên khác nhau cả về thị giác. Kiểm chứng: 3 bản cho ra vân tay khung hình khác nhau từng cặp |
 | `d013c95` | **VID-02** — TTS có thang retry (nguyên văn → bỏ dấu câu cuối → đổi giọng cùng ngôn ngữ), kiểm tra audio khác rỗng và đọc được thời lượng, dọn file hỏng giữa các lần thử.<br>**VID-01** — `news_auto` thay đoạn TTS hỏng bằng im lặng đúng độ dài thay vì đẩy file 0 byte vào concat; báo lỗi rõ ràng khi mọi đoạn đều hỏng. Kiểm chứng: câu gây lỗi giờ thành công ở lần thử 2 (14.976 byte), `news_auto` xuất MP4 2.8MB với hình 7.40s / tiếng 7.35s |
 
