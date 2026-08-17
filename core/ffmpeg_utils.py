@@ -376,6 +376,10 @@ def get_video_duration(video_path: str) -> float:
     return float(info["format"]["duration"])
 
 
+CONCAT_AUDIO_RATE     = 48000
+CONCAT_AUDIO_CHANNELS = 2
+
+
 def normalize_segment_cfr(
     input_path: str,
     output_path: str,
@@ -384,20 +388,38 @@ def normalize_segment_cfr(
     """
     Normalize a video segment to Constant Frame Rate (CFR) before concatenation.
     This prevents stuttering and freezes at scene cuts.
+
+    Cũng chuẩn hoá luôn luồng audio về 48kHz stereo, và cấp một luồng im lặng cho
+    clip không có tiếng. Concat demuxer KHÔNG resample: chỉ cần một clip lệch
+    sample rate hoặc thiếu luồng audio là cả timeline tiếng của bản nối bị sai
+    (đã gặp: segment 24kHz mono nối với clip 48kHz stereo -> 12s hình mà 9s tiếng).
     """
     check_ffmpeg()
-    _run([
-        "ffmpeg", "-y",
-        "-i", input_path,
+
+    has_audio = bool(subprocess.run([
+        "ffprobe", "-v", "error", "-select_streams", "a",
+        "-show_entries", "stream=index", "-of", "csv=p=0", input_path,
+    ], capture_output=True, text=True).stdout.strip())
+
+    cmd = ["ffmpeg", "-y", "-i", input_path]
+    if not has_audio:
+        cmd += ["-f", "lavfi", "-i",
+                f"anullsrc=channel_layout=stereo:sample_rate={CONCAT_AUDIO_RATE}",
+                "-map", "0:v:0", "-map", "1:a:0", "-shortest"]
+
+    cmd += [
         "-vsync", "cfr",
         "-r", str(fps),
         "-c:v", "libx264",
         "-preset", "fast",
         "-crf", "22",
-        "-c:a", "copy",
+        "-c:a", "aac", "-b:a", "192k",
+        "-ar", str(CONCAT_AUDIO_RATE),
+        "-ac", str(CONCAT_AUDIO_CHANNELS),
         "-pix_fmt", "yuv420p",
         output_path,
-    ], label="normalize_cfr")
+    ]
+    _run(cmd, label="normalize_cfr")
     logger.debug(f"[CFR] Normalized {input_path} -> {output_path} at {fps}fps")
     return output_path
 

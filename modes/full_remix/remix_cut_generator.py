@@ -253,6 +253,18 @@ def _trim_clip_with_audio(
         raise RuntimeError(f"_trim_clip_with_audio failed: {result.stderr[-300:]}")
 
 
+_AUDIO_RATE = 48000   # thống nhất cho mọi segment trước khi nối
+
+
+def _has_audio(media_path: str) -> bool:
+    """Clip có luồng audio không (clip tải từ Pexels/Pixabay thường không có)."""
+    out = subprocess.run([
+        "ffprobe", "-v", "error", "-select_streams", "a",
+        "-show_entries", "stream=index", "-of", "csv=p=0", media_path,
+    ], capture_output=True, text=True).stdout.strip()
+    return bool(out)
+
+
 def _mux_broll_with_audio(
     broll_video: str,
     audio_source: str,
@@ -267,15 +279,29 @@ def _mux_broll_with_audio(
     Returns True on success, False on failure.
     """
     try:
+        # `audio_source` là segment đã cắt từ video — sau bước thay tiếng nó có thể
+        # KHÔNG còn luồng audio. Khi đó `-map 1:a:0` làm ffmpeg thoát với
+        # "Failed to set value '1:a:0' for option 'map'", lỗi bị nuốt và B-roll
+        # không bao giờ được chèn vào. Thiếu tiếng thì lấy im lặng làm input 1
+        # để chỉ số map giữ nguyên và clip ra vẫn luôn có luồng audio.
+        if _has_audio(audio_source):
+            audio_input = ["-i", audio_source]
+        else:
+            logger.info("    Segment không có audio — dùng im lặng cho B-roll clip.")
+            audio_input = ["-f", "lavfi", "-i",
+                           f"anullsrc=channel_layout=stereo:sample_rate={_AUDIO_RATE}"]
+
         cmd = [
             "ffmpeg", "-y",
             "-i", broll_video,      # input 0: B-roll video (video track)
-            "-i", audio_source,     # input 1: original segment (audio track)
+            *audio_input,           # input 1: audio của segment, hoặc im lặng
             "-map", "0:v:0",        # take video from B-roll
-            "-map", "1:a:0",        # take audio from original segment
+            "-map", "1:a:0",        # take audio from input 1
             "-t", str(round(duration, 3)),
             "-c:v", "libx264", "-preset", "fast", "-crf", "22",
-            "-c:a", "aac", "-b:a", "192k",
+            # Ghim sample rate/số kênh: concat demuxer không resample nên các segment
+            # lệch thông số sẽ làm kéo giãn timeline audio của clip nối sau.
+            "-c:a", "aac", "-b:a", "192k", "-ar", str(_AUDIO_RATE), "-ac", "2",
             output,
         ]
         result = subprocess.run(cmd, capture_output=True, text=True)
