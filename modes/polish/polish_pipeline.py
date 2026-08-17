@@ -33,6 +33,63 @@ def extract_first_frame(video_path: str, output_image: str):
     subprocess.run(cmd, capture_output=True)
 
 
+# Kho câu hook cho chế độ Polish, xếp theo góc tiếp cận khác nhau.
+# Polish không có kịch bản nên trước đây mọi biến thể đều dùng chung chuỗi "🔥🔥🔥",
+# khiến N bản A/B ra giống hệt nhau từng pixel — tức là test A/B vô nghĩa.
+_POLISH_HOOK_ANGLES = [
+    ("curiosity",    "XEM ĐẾN CUỐI NHÉ!"),
+    ("question",     "BẠN ĐÃ THỬ CHƯA?"),
+    ("urgency",      "SỐ LƯỢNG CÓ HẠN"),
+    ("benefit",      "DÙNG LÀ MÊ NGAY"),
+    ("shock_fact",   "ĐỪNG BỎ LỠ!"),
+]
+
+
+def _build_polish_hooks(inputs: PolishInputs) -> list[dict]:
+    """
+    Dựng danh sách hook khác nhau cho Polish, ưu tiên dữ liệu thật mà người dùng đã nhập
+    (giá, lượt bán, đánh giá, tên thương hiệu) rồi mới tới các câu theo góc tiếp cận.
+    """
+    angles: list[tuple[str, str]] = []
+
+    price = (inputs.price or "").strip()
+    if inputs.add_price_badge and price:
+        angles.append(("price", f"CHỈ {price}"))
+
+    sold = str(getattr(inputs, "sold_count", "") or "").strip()
+    if inputs.add_social_proof and sold:
+        angles.append(("social_proof", f"ĐÃ BÁN {sold}"))
+
+    rating = getattr(inputs, "rating", 0) or 0
+    if inputs.add_social_proof and rating:
+        angles.append(("rating", f"{rating:g} SAO ĐÁNH GIÁ"))
+
+    brand = (inputs.watermark_text or "").strip()
+    if brand:
+        angles.append(("brand", brand.upper()))
+
+    # Bổ sung từ kho câu chung cho tới khi đủ số biến thể, không lặp lại câu đã có
+    seen = {text for _, text in angles}
+    for angle, text in _POLISH_HOOK_ANGLES:
+        if len(angles) >= inputs.hook_variants:
+            break
+        if text not in seen:
+            angles.append((angle, text))
+            seen.add(text)
+
+    hooks = []
+    for i in range(inputs.hook_variants):
+        angle, text = angles[i % len(angles)]
+        hooks.append({
+            "variant_id":     i + 1,
+            "hook_type":      angle,
+            "voiceover_text": text,
+            "on_screen_text": text,
+        })
+    logger.info(f"[POLISH] Hook variants: {[h['on_screen_text'] for h in hooks]}")
+    return hooks
+
+
 def run_polish_pipeline(inputs: PolishInputs, output_dir: str, temp_dir: str) -> list[str]:
     """
     Polish Mode:
@@ -103,18 +160,8 @@ def run_polish_pipeline(inputs: PolishInputs, output_dir: str, temp_dir: str) ->
         first_frame = os.path.join(temp_dir, "first_frame.jpg")
         extract_first_frame(current_video, first_frame)
         
-        # Create generic hook variants since we don't generate script here
-        generic_hooks = []
-        for i in range(inputs.hook_variants):
-            generic_hooks.append({
-                "variant_id": i + 1,
-                "hook_type": "polish",
-                "voiceover_text": "🔥🔥🔥",
-                "on_screen_text": "🔥🔥🔥"
-            })
-
         hook_clips = generate_hook_clips(
-            hook_variants=generic_hooks,
+            hook_variants=_build_polish_hooks(inputs),
             product_image=first_frame,
             temp_dir=temp_dir,
         )

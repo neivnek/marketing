@@ -37,6 +37,16 @@ logger = logging.getLogger(__name__)
 HOOK_DURATION_SEC  = 3.0    # Hard cap: hooks are max 3 seconds
 MIN_HOOK_VARIANTS  = 2
 
+# Kiểu chuyển động Ken Burns cho từng biến thể hook: (zoom_start, zoom_end, pan)
+# Mục đích là các bản A/B khác nhau về thị giác ngay cả khi chữ hook giống nhau.
+_HOOK_MOTIONS = [
+    (1.00, 1.12, ["center"]),   # zoom vào chậm
+    (1.14, 1.00, ["center"]),   # zoom ra
+    (1.06, 1.16, ["left"]),     # zoom vào + trôi trái
+    (1.06, 1.16, ["right"]),    # zoom vào + trôi phải
+    (1.02, 1.10, ["up"]),       # zoom nhẹ + trôi lên
+]
+
 # Fixed rotation list: each hook must have a DIFFERENT hook_type
 _HOOK_TYPES = [
     "question",
@@ -312,6 +322,11 @@ def generate_hook_clips(
         kb_path  = os.path.join(temp_dir, f"{hook_id}_kb.mp4")
         txt_path = os.path.join(temp_dir, f"{hook_id}_text.mp4")
 
+        # Mỗi biến thể một kiểu chuyển động riêng. Trước đây mọi hook đều dùng
+        # zoom 1.0→1.06 / pan center, nên khi chữ hook trùng nhau thì các bản
+        # A/B ra giống hệt nhau từng pixel.
+        zoom_start, zoom_end, pans = _HOOK_MOTIONS[len(results) % len(_HOOK_MOTIONS)]
+
         try:
             apply_ken_burns(
                 image_path=product_image,
@@ -320,9 +335,9 @@ def generate_hook_clips(
                 total_duration=HOOK_DURATION_SEC,
                 out_w=out_w,
                 out_h=out_h,
-                zoom_start=1.0,
-                zoom_end=1.06,
-                pan_directions=["center"],
+                zoom_start=zoom_start,
+                zoom_end=zoom_end,
+                pan_directions=pans,
                 fps=30,
                 temp_dir=temp_dir,
             )
