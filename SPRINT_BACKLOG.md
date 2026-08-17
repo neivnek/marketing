@@ -1,6 +1,6 @@
 # 🗂️ SPRINT BACKLOG — Hybrid Zero-Cost Video Pipeline
 
-> Danh sách lỗi đang mở, đã xác minh bằng chạy thật. Mỗi mục ghi rõ: triệu chứng đo được,
+> Danh sách lỗi đang mở (10 mục), đã xác minh bằng chạy thật. Hai mục P0 đã đóng ở `d013c95`. Mỗi mục ghi rõ: triệu chứng đo được,
 > nguyên nhân gốc, vị trí trong code, cách tái hiện, hướng sửa và điều kiện nghiệm thu.
 
 | | |
@@ -13,85 +13,16 @@
 
 ## Tổng quan
 
-| Mức | Số lượng | Nghĩa là |
+| Mức | Còn mở | Nghĩa là |
 |---|---|---|
-| **P0** | 2 | Chặn sử dụng — pipeline không ra file |
+| **P0** | 0 | ~~Chặn sử dụng~~ — đã đóng cả 2 ở `d013c95` |
 | **P1** | 5 | Ra file nhưng nội dung sai, không dùng để chạy quảng cáo được |
 | **P2** | 4 | Mất tính năng hoặc giảm chất lượng, không chặn |
 | **SEC** | 1 | Bảo mật |
 
-**Đề xuất thứ tự làm:** `VID-02` → `VID-01` (sửa 1 chỗ, sống lại 1 pipeline và làm bền toàn hệ thống)
-→ `VID-05` (tính năng bán hàng chính đang vô nghĩa) → nhóm lệch tiếng/hình `VID-03/04/06`
+**Đề xuất thứ tự làm:** `VID-05` (tính năng bán hàng chính đang vô nghĩa)
+→ nhóm lệch tiếng/hình `VID-03` + `VID-04` + `VID-06` (cùng một họ, nên sửa chung một lượt)
 → `VID-07` → `SCR-01` → phần còn lại.
-
----
-
-## P0 — Chặn sử dụng
-
-### VID-01 · `news_auto` sập hoàn toàn, không ra file
-
-**Triệu chứng.** Chạy `run_news_auto_pipeline` với payload JSON 2 đoạn hợp lệ:
-
-```
-CalledProcessError: ffmpeg -f concat -safe 0 -i .../master_voice.mp3.txt -c copy master_voice.mp3
-returned non-zero exit status 183
-[concat] Impossible to open '.../seg_01.mp3'
-[in#0] Error opening input: Invalid data found when processing input
-```
-
-Kiểm tra thư mục tạm: `seg_01.mp3` = **0 byte**, `seg_02.mp3` = 14.976 byte.
-
-**Nguyên nhân gốc.** Xem `VID-02`. Bước TTS cho đoạn 1 thất bại nhưng vẫn để lại file rỗng,
-đến bước nối audio thì ffmpeg chết.
-
-**Vị trí.** `modes/news_auto/news_auto_pipeline.py` (bước sinh `seg_*.mp3` rồi concat)
-
-**Tái hiện.**
-```python
-ni = NewsAutoInputs(json_payload=payload_2_doan, output_quality="1080p", tts_voice="vi-VN-HoaiMyNeural")
-run_news_auto_pipeline(ni, out_dir, tmp_dir)
-```
-
-**Hướng sửa.** Sau khi sửa `VID-02`, thêm chốt chặn ngay tại pipeline: bỏ qua segment nào không có
-audio hợp lệ (kèm cảnh báo) thay vì đưa vào danh sách concat, và nếu **mọi** segment đều hỏng thì
-báo lỗi rõ ràng cho người dùng chứ không để ffmpeg tự chết.
-
-**Nghiệm thu.** Chạy payload 2–5 đoạn ra được file MP4; nếu cố tình làm 1 đoạn hỏng thì video vẫn
-xuất được với các đoạn còn lại và log nói rõ đoạn nào bị bỏ.
-
----
-
-### VID-02 · edge-tts trả về rỗng với một số câu, code không phát hiện
-
-**Triệu chứng.** Câu `"Đoạn ba nói về sản phẩm."` + giọng `vi-VN-HoaiMyNeural` **luôn** ném
-`NoAudioReceived`, lặp lại y hệt qua nhiều lần chạy — không phải rate limit mà phụ thuộc nội dung:
-
-| Biến thể | Kết quả |
-|---|---|
-| `"Đoạn ba nói về sản phẩm."` | ❌ NoAudioReceived |
-| Bỏ dấu chấm cuối | ✅ 14.976 byte |
-| Đổi sang giọng `vi-VN-NamMinhNeural` | ✅ 15.408 byte |
-| Đổi một từ (`sản phẩm` → `hàng hoá`) | ✅ 15.552 byte |
-| Nối thêm câu phía sau | ❌ NoAudioReceived |
-
-**Nguyên nhân gốc.** Đây là quirk của dịch vụ Microsoft, không sửa được từ phía ta — nhưng
-`synthesize_khmer` chỉ kiểm tra `os.path.isfile(output_path)` chứ **không kiểm tra kích thước**,
-nên file 0 byte được coi là thành công. Không có retry, không có giọng dự phòng.
-
-**Vị trí.** `core/tts_engine.py` — `synthesize_khmer()`, dòng kiểm tra `if not os.path.isfile(output_path)`
-
-**Tái hiện.**
-```python
-from core.tts_engine import synthesize_khmer
-synthesize_khmer("Đoạn ba nói về sản phẩm.", "/tmp/a.mp3", voice="vi-VN-HoaiMyNeural")
-```
-
-**Hướng sửa.** Trong `synthesize_khmer`: kiểm tra file tồn tại **và** > 0 byte; nếu thất bại thì
-retry theo bậc thang — bỏ dấu câu ở cuối → đổi sang giọng cùng ngôn ngữ khác → tách câu và ghép lại.
-Hết cách thì raise (không bao giờ trả về file rỗng).
-
-**Nghiệm thu.** Gọi TTS với chuỗi đã biết là gây lỗi vẫn ra file > 0 byte; không call site nào
-nhận được file 0 byte; có test tự động khoá hành vi này.
 
 ---
 
@@ -332,6 +263,7 @@ dùng chung `hook_variant_generator`.
 | `2f40801` | Đưa toàn bộ 18 call site Gemini về pool, sửa Groq fallback (JSON mode, chặn multimodal, nhận diện quota), thêm Playwright vào image |
 | `5fb9b39` | Sửa `adjust_audio_speed` luôn tạo output, `_create_silent_mp3` không ghi file 0 byte, dọn `.part` của stockpile, đóng SQLite khi lỗi, thư mục tạm riêng mỗi lần chạy, tắt share mặc định, nối `DUB_REMIX` vào router |
 | `538e50a` | Sửa giao diện Gradio 6: thanh tab hiện đủ 9 tab đồng nhất, header bảng kịch bản không còn vỡ khi bấm, sửa `.select()` lambda |
+| `d013c95` | **VID-02** — TTS có thang retry (nguyên văn → bỏ dấu câu cuối → đổi giọng cùng ngôn ngữ), kiểm tra audio khác rỗng và đọc được thời lượng, dọn file hỏng giữa các lần thử.<br>**VID-01** — `news_auto` thay đoạn TTS hỏng bằng im lặng đúng độ dài thay vì đẩy file 0 byte vào concat; báo lỗi rõ ràng khi mọi đoạn đều hỏng. Kiểm chứng: câu gây lỗi giờ thành công ở lần thử 2 (14.976 byte), `news_auto` xuất MP4 2.8MB với hình 7.40s / tiếng 7.35s |
 
 ## Những phần đã kiểm và chạy tốt
 
