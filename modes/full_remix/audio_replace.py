@@ -18,7 +18,7 @@ import subprocess
 from pathlib import Path
 
 from core.tts_engine import synthesize_khmer
-from core.ffmpeg_utils import get_video_duration
+from core.ffmpeg_utils import get_video_duration, mux_audio_to_video
 from core.language_resolver import resolve_voice, resolve_gemini_translate_prompt
 from core.gemini_pool import get_pooled_client
 
@@ -92,20 +92,16 @@ def replace_video_audio(
     audio_dur = get_video_duration(tts_audio_path)
     logger.info(f"    ✓ New TTS audio: {audio_dur:.1f}s  (video: {video_dur:.1f}s)  voice: {tts_voice}")
 
-    # Strip original audio and mux new TTS audio
-    cmd_merge = [
-        "ffmpeg", "-y",
-        "-i", source_video,
-        "-i", tts_audio_path,
-        "-map", "0:v:0",
-        "-map", "1:a:0",
-        "-c:v", "copy",
-        "-c:a", "aac", "-b:a", "192k",
-        output_video,
-    ]
-    result = subprocess.run(cmd_merge, capture_output=True, text=True)
-    if result.returncode != 0:
-        raise RuntimeError(f"Audio merge failed: {result.stderr[-400:]}")
+    # Strip original audio and mux new TTS audio — giữ nguyên độ dài video,
+    # đệm im lặng phần thiếu (cùng quy tắc với dub_only).
+    mux_audio_to_video(source_video, tts_audio_path, output_video)
+
+    silence_tail = video_dur - audio_dur
+    if silence_tail > 2.0:
+        logger.warning(
+            f"    ⚠ Lời đọc ngắn hơn video {silence_tail:.1f}s — phần cuối sẽ im lặng. "
+            f"Viết kịch bản dài hơn, hoặc thêm nhạc nền vào assets/local_music/ để lấp."
+        )
     logger.info(f"    ✓ Audio replaced: {output_video}")
 
     return output_video, final_script

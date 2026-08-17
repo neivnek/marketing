@@ -9,7 +9,7 @@ import logging
 import os
 from pathlib import Path
 from core.tts_engine import synthesize_khmer
-from core.ffmpeg_utils import get_video_duration, burn_hardsub, adjust_audio_speed
+from core.ffmpeg_utils import get_video_duration, burn_hardsub, adjust_audio_speed, mux_audio_to_video
 from core.subtitle_gen import generate_ass_file
 from core.config import DubOnlyInputs
 
@@ -53,23 +53,10 @@ def run_dub_only_pipeline(inputs: DubOnlyInputs, output_dir: str, temp_dir: str)
     # We can reuse audio_replace but we need to pass the adjusted audio.
     # audio_replace currently calls synthesize_khmer inside it if we use it directly.
     # To be precise, let's just do the muxing here since we already have the adjusted audio.
-    import subprocess
     muxed_video = os.path.join(temp_dir, "dub_only_muxed.mp4")
-    cmd_merge = [
-        "ffmpeg", "-y",
-        "-i", source_video,
-        "-i", adjusted_tts_path,
-        "-map", "0:v:0",
-        "-map", "1:a:0",
-        "-c:v", "copy",
-        "-c:a", "aac", "-b:a", "192k",
-        "-shortest",
-        muxed_video,
-    ]
-    merge = subprocess.run(cmd_merge, capture_output=True, text=True)
-    if merge.returncode != 0:
-        # check=True nuốt mất stderr của ffmpeg -> lỗi rỗng không debug được
-        raise RuntimeError(f"FFmpeg lỗi khi ghép audio vào video:\n{merge.stderr[-800:]}")
+    # Giữ nguyên độ dài video, đệm im lặng nếu lời đọc ngắn hơn.
+    # Dùng -shortest như trước sẽ cắt cụt đuôi video mỗi khi lời đọc ngắn.
+    mux_audio_to_video(source_video, adjusted_tts_path, muxed_video)
     logger.info(f"    ✓ Original audio stripped and replaced.")
 
     final_output = os.path.join(output_dir, f"dub_only_{Path(source_video).name}")

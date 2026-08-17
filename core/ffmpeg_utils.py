@@ -401,6 +401,68 @@ def normalize_segment_cfr(
     logger.debug(f"[CFR] Normalized {input_path} -> {output_path} at {fps}fps")
     return output_path
 
+def get_audio_params(media_path: str) -> tuple[int, int]:
+    """
+    Đọc (sample_rate, channels) của luồng audio đầu tiên. Mặc định 48000/2 nếu không có audio.
+
+    Cần thiết khi nối clip bằng concat demuxer: demuxer KHÔNG resample, nên hai clip
+    khác sample rate sẽ làm timeline audio bị kéo giãn (8s audio 48kHz ghép sau một clip
+    24kHz sẽ phát thành 16s).
+    """
+    result = subprocess.run([
+        "ffprobe", "-v", "error",
+        "-select_streams", "a:0",
+        "-show_entries", "stream=sample_rate,channels",
+        "-of", "default=nw=1:nk=1",
+        media_path,
+    ], capture_output=True, text=True)
+    vals = [v for v in result.stdout.split() if v.strip().isdigit()]
+    if len(vals) >= 2:
+        return int(vals[0]), int(vals[1])
+    return 48000, 2
+
+
+def mux_audio_to_video(
+    video_path:  str,
+    audio_path:  str,
+    output_path: str,
+    audio_bitrate: str = "192k",
+) -> str:
+    """
+    Ghép audio vào video, giữ nguyên độ dài VIDEO.
+
+    Quy tắc chung của toàn hệ thống: hình là chuẩn, tiếng phải khớp theo.
+      - Lời đọc ngắn hơn video -> đệm im lặng cho đủ (`apad`), KHÔNG cắt video.
+      - Lời đọc dài hơn video  -> cắt phần tiếng thừa.
+
+    Trước đây các pipeline dùng `-shortest`, nên lời đọc ngắn hơn là video bị cắt cụt
+    (video 8.00s ra thành 6.42s).
+    """
+    check_ffmpeg()
+    video_dur = get_video_duration(video_path)
+
+    _run([
+        "ffmpeg", "-y",
+        "-i", video_path,
+        "-i", audio_path,
+        "-map", "0:v:0",
+        "-map", "1:a:0",
+        "-c:v", "copy",
+        "-c:a", "aac", "-b:a", audio_bitrate,
+        "-af", "apad",          # đệm im lặng vô hạn, cắt lại bằng -t bên dưới
+        "-t", f"{video_dur:.3f}",
+        "-movflags", "+faststart",
+        output_path,
+    ], label="mux_audio_to_video")
+
+    out_dur = get_video_duration(output_path)
+    if abs(out_dur - video_dur) > 0.15:
+        logger.warning(
+            f"[Mux] Độ dài lệch so với video gốc: {out_dur:.2f}s vs {video_dur:.2f}s"
+        )
+    return output_path
+
+
 def adjust_audio_speed(input_audio: str, output_audio: str, target_duration: float) -> str:
     """
     Adjust audio speed to match a target duration.

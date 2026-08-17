@@ -29,7 +29,7 @@ import subprocess
 from pathlib import Path
 from typing import Optional
 
-from core.ffmpeg_utils import apply_ken_burns
+from core.ffmpeg_utils import apply_ken_burns, get_audio_params, get_video_duration
 from core.gemini_pool import get_pooled_client
 
 logger = logging.getLogger(__name__)
@@ -380,15 +380,19 @@ def prepend_hook_to_body(
     """
     os.makedirs(str(Path(output_path).parent), exist_ok=True)
 
-    # Add silent audio to hook clip so concat streams match
+    # Add silent audio to hook clip so concat streams match.
+    # Sample rate và số kênh PHẢI khớp body: concat demuxer không resample, nên
+    # ghép 24kHz với 48kHz sẽ kéo giãn timeline audio (11s hình mà 19.98s tiếng).
+    sample_rate, channels = get_audio_params(body_clip)
+    layout = "mono" if channels == 1 else "stereo"
     hook_with_audio = os.path.join(temp_dir, f"{Path(hook_clip).stem}_audio.mp4")
     cmd_audio = [
         "ffmpeg", "-y",
         "-i", hook_clip,
-        "-f", "lavfi", "-i", "anullsrc=channel_layout=mono:sample_rate=24000",
+        "-f", "lavfi", "-i", f"anullsrc=channel_layout={layout}:sample_rate={sample_rate}",
         "-t", str(HOOK_DURATION_SEC),
         "-c:v", "copy",
-        "-c:a", "aac",
+        "-c:a", "aac", "-ar", str(sample_rate), "-ac", str(channels),
         "-shortest",
         hook_with_audio,
     ]
@@ -409,7 +413,7 @@ def prepend_hook_to_body(
         "-f", "concat", "-safe", "0",
         "-i", concat_list,
         "-c:v", "libx264", "-preset", "fast", "-crf", "22",
-        "-c:a", "aac",
+        "-c:a", "aac", "-ar", str(sample_rate), "-ac", str(channels),
         "-pix_fmt", "yuv420p",
         "-movflags", "+faststart",
         output_path,
@@ -418,5 +422,36 @@ def prepend_hook_to_body(
     if result.returncode != 0:
         raise RuntimeError(f"[HookGen] concat failed: {result.stderr[-300:]}")
 
+    # Chốt chặn: hình và tiếng phải cùng độ dài, nếu không người xem sẽ thấy
+    # video đứng hình ở cuối trong khi tiếng vẫn chạy.
+    v_dur, a_dur = _stream_durations(output_path)
+    if v_dur and a_dur and abs(v_dur - a_dur) > 0.2:
+        logger.warning(
+            f"[HookGen] Lệch hình/tiếng {abs(v_dur - a_dur):.2f}s "
+            f"(hình {v_dur:.2f}s, tiếng {a_dur:.2f}s) — đang cắt cho khớp."
+        )
+        fixed = str(Path(output_path).with_suffix(".fixed.mp4"))
+        subprocess.run([
+            "ffmpeg", "-y", "-i", output_path,
+            "-c", "copy", "-t", f"{min(v_dur, a_dur):.3f}", fixed,
+        ], capture_output=True, text=True)
+        if os.path.exists(fixed) and os.path.getsize(fixed) > 0:
+            shutil.move(fixed, output_path)
+
     logger.info(f"[HookGen] Final video with hook: {Path(output_path).name}")
     return output_path
+
+
+def _stream_durations(path: str) -> tuple[float, float]:
+    """Trả về (độ dài luồng hình, độ dài luồng tiếng) tính bằng giây."""
+    out = subprocess.run([
+        "ffprobe", "-v", "error", "-show_entries", "stream=codec_type,duration",
+        "-of", "default=nw=1:nk=1", path,
+    ], capture_output=True, text=True).stdout.split()
+    vals = {}
+    for i in range(0, len(out) - 1, 2):
+        try:
+            vals[out[i]] = float(out[i + 1])
+        except ValueError:
+            pass
+    return vals.get("video", 0.0), vals.get("audio", 0.0)
