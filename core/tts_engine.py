@@ -64,6 +64,62 @@ async def _synthesize_async(text: str, voice: str, rate: str, output_path: str) 
         logger.debug(f"[TTS] Could not save words json: {exc}")
 
 
+def _alt_voice(voice: str) -> str:
+    """
+    Tìm giọng thay thế cùng ngôn ngữ (nữ <-> nam).
+
+    Dịch vụ edge-tts thỉnh thoảng trả về 0 byte cho một tổ hợp text+giọng cụ thể
+    (tái hiện được 100%), nhưng đổi sang giọng còn lại của cùng ngôn ngữ thì chạy.
+    """
+    try:
+        from core.language_resolver import LANGUAGE_VOICE_MAP
+    except Exception:
+        return ""
+    for female, male in LANGUAGE_VOICE_MAP.values():
+        if voice == female:
+            return male
+        if voice == male:
+            return female
+    return ""
+
+
+def _tts_attempts(script_text: str, voice: str) -> list[tuple[str, str]]:
+    """
+    Thang thử lại cho TTS, xếp từ ít can thiệp tới nhiều:
+      1. nguyên văn + giọng yêu cầu
+      2. bỏ dấu câu ở cuối + giọng yêu cầu   (đã kiểm chứng: chữa được lỗi rỗng)
+      3-4. hai biến thể trên với giọng thay thế cùng ngôn ngữ
+    """
+    base = script_text.strip()
+    texts = [base]
+    trimmed = base.rstrip(" .!?…。！？").strip()
+    if trimmed and trimmed != base:
+        texts.append(trimmed)
+
+    attempts = [(t, voice) for t in texts]
+    alt = _alt_voice(voice)
+    if alt and alt != voice:
+        attempts += [(t, alt) for t in texts]
+    return attempts
+
+
+def _audio_is_usable(path: str) -> bool:
+    """File TTS chỉ được coi là hợp lệ khi tồn tại, khác rỗng VÀ đọc được thời lượng."""
+    if not os.path.isfile(path) or os.path.getsize(path) == 0:
+        return False
+    return get_audio_duration(path) > 0
+
+
+def _discard(path: str) -> None:
+    """Xoá file audio hỏng và metadata kèm theo để không ai dùng nhầm."""
+    for p in (path, str(Path(path).with_suffix(".words.json"))):
+        try:
+            if os.path.isfile(p):
+                os.remove(p)
+        except OSError:
+            pass
+
+
 def synthesize_khmer(
     script_text: str,
     output_path: str,
@@ -103,19 +159,48 @@ def synthesize_khmer(
     logger.info(f"[TTS]  TTS synthesis -> voice={voice}, rate={rate}")
     logger.info(f"    Script length: {len(script_text)} chars")
 
-    # edge-tts is async — use asyncio.run() (Python 3.10+)
-    # Falls back to nest_asyncio for Gradio / Jupyter environments
-    try:
-        asyncio.run(_synthesize_async(script_text, voice, rate, output_path))
-    except RuntimeError:
-        # Already inside a running event loop (Gradio/Jupyter)
-        import nest_asyncio  # type: ignore
-        nest_asyncio.apply()
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(_synthesize_async(script_text, voice, rate, output_path))
+    attempts = _tts_attempts(script_text, voice)
+    last_error = None
 
-    if not os.path.isfile(output_path):
-        raise RuntimeError(f"TTS synthesis failed — output not found: {output_path}")
+    for i, (text, use_voice) in enumerate(attempts, 1):
+        if i > 1:
+            logger.warning(
+                f"[TTS] Thử lại lần {i}/{len(attempts)} — giọng={use_voice}, "
+                f"{'đã bỏ dấu câu cuối' if text != script_text.strip() else 'nguyên văn'}"
+            )
+        try:
+            # edge-tts is async — use asyncio.run() (Python 3.10+)
+            # Falls back to nest_asyncio for Gradio / Jupyter environments
+            try:
+                asyncio.run(_synthesize_async(text, use_voice, rate, output_path))
+            except RuntimeError:
+                # Already inside a running event loop (Gradio/Jupyter)
+                import nest_asyncio  # type: ignore
+                nest_asyncio.apply()
+                loop = asyncio.get_event_loop()
+                loop.run_until_complete(_synthesize_async(text, use_voice, rate, output_path))
+        except Exception as exc:
+            # _synthesize_async mở file TRƯỚC khi stream, nên lỗi giữa chừng
+            # luôn để lại file 0 byte — phải dọn, nếu không nó trôi xuống ffmpeg.
+            last_error = exc
+            logger.warning(f"[TTS] Lần thử {i} lỗi: {type(exc).__name__}: {str(exc)[:120]}")
+            _discard(output_path)
+            continue
+
+        # edge-tts có thể "thành công" mà không trả về byte audio nào
+        if _audio_is_usable(output_path):
+            if i > 1:
+                logger.info(f"[TTS] ✓ Thành công ở lần thử {i} (giọng={use_voice})")
+            break
+        logger.warning(f"[TTS] Lần thử {i} trả về audio rỗng — bỏ và thử phương án khác.")
+        _discard(output_path)
+    else:
+        raise RuntimeError(
+            f"TTS thất bại sau {len(attempts)} lần thử cho đoạn text "
+            f"{script_text.strip()[:60]!r} (giọng gốc: {voice})."
+            + (f" Lỗi cuối: {type(last_error).__name__}: {last_error}" if last_error else
+               " Dịch vụ trả về audio rỗng ở mọi phương án.")
+        )
 
     duration = get_audio_duration(output_path)
     logger.info(f"    ✓ Voiceover saved: {output_path}  ({duration:.1f}s)")
@@ -142,6 +227,17 @@ def get_audio_duration(mp3_path: str) -> float:
     except Exception as e:
         logger.warning(f"[TTS] Không thể đọc thời lượng audio {mp3_path}: {e}")
         return 0.0
+
+def create_silent_mp3(output_path: str, duration: float = 0.5) -> str:
+    """
+    Tạo MP3 im lặng dài `duration` giây.
+
+    Dùng khi một đoạn lời đọc thất bại nhưng vẫn cần giữ đúng nhịp thời gian của
+    dòng thời gian hình ảnh — thay vì bỏ hẳn đoạn audio làm tiếng lệch khỏi hình.
+    """
+    _create_silent_mp3(output_path, duration)
+    return output_path
+
 
 def _create_silent_mp3(output_path: str, duration: float = 0.5) -> None:
     """

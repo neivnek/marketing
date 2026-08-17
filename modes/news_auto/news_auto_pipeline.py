@@ -12,7 +12,7 @@ import subprocess
 from pathlib import Path
 from typing import Any, Optional
 
-from core.tts_engine import synthesize_khmer
+from core.tts_engine import synthesize_khmer, create_silent_mp3
 from core.subtitle_gen import generate_ass_file
 from core.ffmpeg_utils import burn_hardsub, get_video_duration, apply_ken_burns
 from core.broll_aggregator import fetch_broll_clips
@@ -75,6 +75,7 @@ def run_news_auto_pipeline(
     segment_audio_paths = []
     segment_durations   = []
     full_script_lines   = []
+    tts_ok              = 0     # số đoạn có lời đọc thật (0 = hỏng toàn bộ -> báo lỗi)
 
     for seg in segments:
         seg_id   = seg["id"]
@@ -91,12 +92,27 @@ def run_news_auto_pipeline(
                 rate=getattr(news_inputs, "tts_rate", "+0%")
             )
             dur = get_video_duration(seg_audio)
+            tts_ok += 1
         except Exception as exc:
-            logger.warning(f"    TTS failed for segment {seg_id} ({exc}). Using estimated duration.")
+            # Không được đưa file hỏng/rỗng vào danh sách nối — ffmpeg concat sẽ chết
+            # và cả video hỏng theo. Thay bằng im lặng đúng độ dài dự kiến để dòng
+            # thời gian hình ảnh vẫn khớp, đoạn đó chỉ mất tiếng.
             dur = float(seg.get("duration_hint_sec", 4.0))
+            logger.warning(
+                f"    TTS failed for segment {seg_id} ({exc}). "
+                f"Thay bằng {dur:.1f}s im lặng — đoạn này sẽ không có lời đọc."
+            )
+            create_silent_mp3(seg_audio, dur)
 
         segment_audio_paths.append(seg_audio)
         segment_durations.append(dur)
+
+    if tts_ok == 0:
+        raise RuntimeError(
+            f"Không tạo được lời đọc cho bất kỳ đoạn nào trong {len(segments)} đoạn. "
+            f"Kiểm tra giọng đọc '{news_inputs.tts_voice}' có đúng ngôn ngữ của kịch bản không, "
+            f"và kết nối mạng tới dịch vụ edge-tts."
+        )
 
     # Concatenate all TTS segment audios into one master audio file
     master_audio = os.path.join(work_temp, "master_voice.mp3")
